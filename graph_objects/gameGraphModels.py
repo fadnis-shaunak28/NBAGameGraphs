@@ -4,6 +4,27 @@ import nba_api.live.nba.endpoints as nba_live
 from nba_api.stats.static import players, teams
 import utilities
 
+
+TEAM_VIEW_TYPE = "TEAM"
+DEFENSE_VIEW_TYPE = "DEFENSE"
+    
+EVENTNUM_INDEX = 0
+PERIOD_INDEX = 1
+PCTIMESTRING_INDEX = 2
+DESCRIPTION_INDEX = 3
+ACTION_TYPE_INDEX = 4
+SUB_TYPE_INDEX = 5
+P1_ID_INDEX = 6
+P1_TEAM_ID_INDEX = 7
+P2_ID_INDEX = 8
+P2_TEAM_ID_INDEX = 9 
+P3_ID_INDEX = 10
+P3_TEAM_ID_INDEX = 11
+SCORE_HOME_INDEX = 12
+SCORE_AWAY_INDEX = 13
+SHOT_DISTANCE_INDEX = 14
+
+
 @dataclass
 class gameEdge:
     # required attributes for init args
@@ -19,6 +40,14 @@ class gameEdge:
     TO : int = 0
     PF : int = 0
     TIME_ON_SHARED : int = 0
+    
+    
+    def __hash__(self):
+        return hash((self.from_id, self.to_id))
+    
+    def updateEdgeStats(self, action_stat):
+        pass
+    
     
     
 @dataclass
@@ -39,29 +68,18 @@ class playerNode:
     APM : float = 0
     TIME_ON_SEC : int = 0
     connections : list[gameEdge] = field(default_factory=list)
+    LAST_UPDATED_EVENT : int = 0
     
     def __hash__(self):
         return hash(self.id) # hash on player ID for game
 
-TEAM_VIEW_TYPE = "TEAM"
-DEFENSE_VIEW_TYPE = "DEFENSE"
+    def gameEdgeGetOrAdd(self, to_pid, from_pid, offense_bool):
+        game_edge = self.connections.get((to_pid, from_pid), gameEdge(to_id=to_pid, from_id=from_pid, offense=offense_bool))
+        return game_edge
     
-EVENTNUM_INDEX = 0
-PERIOD_INDEX = 1
-PCTIMESTRING_INDEX = 2
-DESCRIPTION_INDEX = 3
-ACTION_TYPE_INDEX = 4
-SUB_TYPE_INDEX = 5
-P1_ID_INDEX = 6
-P1_TEAM_ID_INDEX = 7
-P2_ID_INDEX = 8
-P2_TEAM_ID_INDEX = 9 
-P3_ID_INDEX = 10
-P3_TEAM_ID_INDEX = 11
-SCORE_HOME_INDEX = 12
-SCORE_AWAY_INDEX = 13
-SHOT_DISTANCE_INDEX = 14
-    
+    def updatePlayerNode(self, action_stat):
+        pass
+        
     
 class gameGraphBase:
     def __init__(self, game_id, home_team_id, away_team_id):
@@ -90,6 +108,7 @@ class gameGraphBase:
     '''
     
     def buildGraph(self, play_by_play_df):
+        
         for event in play_by_play_df.iter_rows():    
             p1, p2, p3 = False, False, False
             
@@ -111,37 +130,41 @@ class gameGraphBase:
             
             
             if p1:  #   checking if valid play
-                if (P1_ID := P1_res.get("id")) not in self.graph_nodes:
-                    # create node
-                    self.addPlayerNode(player_id=P1_ID, player_name=P1_res.get("full_name"), player_team_id=event[P1_TEAM_ID_INDEX])
+                # create node
+                p1_node =  self.playerNodeGetOrAdd(player_id=event[P1_ID_INDEX], player_name=P1_res.get("full_name"), player_team_id=event[P1_TEAM_ID_INDEX])
                     
-                # node guaranteed to be in graph now
                                 
-                if p2:  #   checking if there is a valid secondary player, 111 isn't worth it so if there is a one, only process the second player
-                    if (P2_ID := P2_res.get("id")) not in self.graph_nodes:
-                        # create node
-                        self.addPlayerNode(player_id=P2_ID, player_name=P2_res.get("full_name"), player_team_id=event[P2_TEAM_ID_INDEX])
-
-                    # node guaranteed to be in graph now
-                    # add edge to player node    
+                if p2 or p3:  #   checking if there is a secondary player needed
+                    to_player_id = None
+                    from_player_id = None
+                    offense_bool = True
                     
+                    if p2:  
+                        p_node = self.playerNodeGetOrAdd(player_id=event[P2_ID_INDEX], player_name=P2_res.get("full_name"), player_team_id=event[P2_TEAM_ID_INDEX])
+                        to_player_id = event[P1_ID_INDEX]
+                        from_player_id = event[P2_ID_INDEX]
+                        offense_bool = True   
+                        
+                        # TODO: Add node update details
                     
-                elif p3:   #    if p2 is False, then we only need to check p3 now   
-                    if (P3_ID := P3_res.get("id")) not in self.graph_nodes:
-                        # add node
-                        self.addPlayerNode(player_id=P3_ID, player_name=P3_res.get("full_name"), player_team_id=event[P3_TEAM_ID_INDEX])
-
-                    # node guaranteed to be in graph now
-                    # add edge to player node                    
-                    
+                    else:
+                        p_node = self.playerNodeGetOrAdd(player_id=event[P3_ID_INDEX], player_name=P3_res.get("full_name"), player_team_id=event[P3_TEAM_ID_INDEX])             
+                        to_player_id = event[P1_ID_INDEX]
+                        from_player_id = event[P3_ID_INDEX]
+                        offense_bool = True    
+                        
+                        # TODO: Add node update details
+                        
+                    # creates edge between correct players and then calls class method to update the stats in an edge
+                    to_from_edge = p_node.gameEdgeGetOrAdd(to_player_id, from_player_id, offense_bool)
+                    to_from_edge.updateEdgeStats(action_stat=ACTION_STAT)
                 
             # if not a valid player play then move on and ignore
             else:
                 pass
         
-    def addPlayerNode(self, player_id, player_name, player_team_id):
-        new_node = playerNode(id=player_id, full_name=player_name, team_id=player_team_id)
-        self.graph_nodes[player_id] = new_node
+    def playerNodeGetOrAdd(self, player_id, player_name, player_team_id):
+        return self.graph_nodes.get(player_id, playerNode(id=player_id, full_name=player_name, player_team_id=player_team_id))
         
 
 
