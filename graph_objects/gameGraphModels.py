@@ -117,6 +117,8 @@ class playerNode:
                 self.PTS += 3
             else: 
                 self.PTS += 2
+        elif action_stat == "FT_MAKE":
+            self.PTS += 1
         elif action_stat == "REB":
             self.REB += 1
         elif action_stat == "PF":

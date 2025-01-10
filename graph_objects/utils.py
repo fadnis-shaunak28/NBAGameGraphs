@@ -1,4 +1,5 @@
 import polars as pl
+import pandas as pd
 import nba_api.stats.endpoints as nba_stats
 import nba_api.live.nba.endpoints as nba_live
 from nba_api.stats.static import players, teams
@@ -152,7 +153,7 @@ def scrapeActionType(action_type_str, p1_bool=False, p2_bool=False, p3_bool=Fals
         # If FT: MISS at start of string indicates miss so no PTS update
         elif "FREE THROW" in action_type_str:
             if not re.search(pattern=r"\bMISS", string=action_type_str):
-                p1_action = "PTS"
+                p1_action = "FT_MAKE"
                 
         # If Rebound, just update REB
         elif "REBOUND" in action_type_str:
