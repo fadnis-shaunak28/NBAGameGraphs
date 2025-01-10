@@ -102,6 +102,61 @@ player_direction = indicates whether edge is from p1 to px or px to p1;
 
 '''
 
+
+def scrapeActionType(action_type_str, p1_bool=False, p2_bool=False, p3_bool=False, miss_bool=None):
+    p1_action = None
+    p2_action = None
+    p3_action = None
+    player_direction = 1
+    
+    if p1_bool:
+        # If Missed: P3 indicates a Block, else we don't return an action
+        if "MISSED SHOT" in action_type_str:
+            if p3_bool:
+                p3_action = "BLK"
+                player_direction = 0
+                
+
+        # If Made: p2 existence means assist
+        elif "MADE SHOT" in action_type_str:
+            p1_action = "PTS"
+            if p2_bool:
+                p2_action = "AST"
+                player_direction = 0
+                
+        # If FT: MISS at start of string indicates miss so no PTS update
+        elif "FREE THROW" in action_type_str:
+            if not miss_bool:
+                p1_action = "FT_MAKE"
+                
+        # If Rebound, just update REB
+        elif "REBOUND" in action_type_str:
+            p1_action = "REB"
+            
+        # 4 conditions for foul: Personal, Shooting, Flagrant, Technical
+        elif "FOUL" in action_type_str:
+            if p2_bool:
+                p1_action = "PF"
+                p2_action = "F_DRAWN"
+            else:
+                p1_action = "F_TECH"
+                
+        # elif "SUBSTITUTION" in action_type_str:
+        #     p1_action = "SUB_OUT"
+        #     p2_action = "SUB_IN"
+        #     player_direction = 0
+            
+        elif "TURNOVER" in action_type_str:
+            p1_action = "TO"
+            if p2_bool:
+                p2_action = "STL"
+                player_direction = 0
+                
+    return p1_action, p2_action, p3_action, player_direction
+
+
+
+
 def get_home_id(group):
     for row in group.itertuples():
         print(row.MATCHUP)
@@ -126,56 +181,3 @@ def process_group(group):
 
 # game_details = nba_stats.leaguegamefinder.LeagueGameFinder(season_nullable="2024-25", date_from_nullable="", season_type_nullable="Regular Season", league_id_nullable="00").get_data_frames()[0]
 # combined_df = game_details.groupby("GAME_ID").apply(process_group)
-
-
-def scrapeActionType(action_type_str, p1_bool=False, p2_bool=False, p3_bool=False):
-    p1_action = None
-    p2_action = None
-    p3_action = None
-    player_direction = 1
-    
-    if p1_bool:
-        # If Missed: P3 indicates a Block, else we don't return an action
-        if "MISSED SHOT" in action_type_str:
-            if p3_bool:
-                p1_action = "TO"
-                p3_action = "BLK"
-                player_direction = 0
-                
-
-        # If Made: p2 existence means assist
-        elif "MADE SHOT" in action_type_str:
-            p1_action = "PTS"
-            if p2_bool:
-                p2_action = "AST"
-                player_direction = 0
-                
-        # If FT: MISS at start of string indicates miss so no PTS update
-        elif "FREE THROW" in action_type_str:
-            if not re.search(pattern=r"\bMISS", string=action_type_str):
-                p1_action = "FT_MAKE"
-                
-        # If Rebound, just update REB
-        elif "REBOUND" in action_type_str:
-            p1_action = "REB"
-            
-        # 4 conditions for foul: Personal, Shooting, Flagrant, Technical
-        elif "FOUL" in action_type_str:
-            if p2_bool:
-                p1_action = "PF"
-                p2_action = "F_DRAWN"
-            else:
-                p1_action = "F_TECH"
-                
-        elif "SUBSTITUTION" in action_type_str:
-            p1_action = "SUB_OUT"
-            p2_action = "SUB_IN"
-            player_direction = 0
-            
-        elif "TURNOVER" in action_type_str:
-            p1_action = "TO"
-            if p2_bool:
-                p2_action = "STL"
-                player_direction = 0
-                
-    return p1_action, p2_action, p3_action, player_direction
