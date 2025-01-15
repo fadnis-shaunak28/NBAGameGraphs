@@ -3,7 +3,6 @@ import pandas as pd
 import nba_api.stats.endpoints as nba_stats
 import nba_api.live.nba.endpoints as nba_live
 from nba_api.stats.static import players, teams
-from matplotlib import pyplot as plt
 import re
 
 # relevant pbp2 columns

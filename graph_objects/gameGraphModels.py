@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 import nba_api.stats.endpoints as nba_stats
 import nba_api.live.nba.endpoints as nba_live
 from nba_api.stats.static import players, teams
-import utils
+from graph_objects import utils
 from typing import Dict
 import polars as pl
 import re
@@ -40,6 +40,9 @@ class gameEdge:
     STL : int = 0
     BLK : int = 0
     PF : int = 0    
+    
+    def __repr__(self):
+        return f"Edge to {self.to_p_id}; Offense: {self.offense}"
     
     def __hash__(self):
         return hash(self.to_p_id)
@@ -124,8 +127,6 @@ class playerNode:
         
         return stats_dict
     
-    def getPlayerEdges(self):
-        return self.connections
 
     def gameEdgeGetOrAdd(self, to_pid, off_bool : bool):
         game_edge = self.connections.setdefault(to_pid, gameEdge(to_p_id=to_pid, offense=off_bool))
@@ -156,7 +157,7 @@ class playerNode:
             self.F_DRAWN += 1
         elif action_stat == "F_TECH":
             self.F_TECH += 1
-
+        
                 
             
 class gameGraphBase:
@@ -224,12 +225,14 @@ class gameGraphBase:
                 # Checking if p2/p3 are active secondary players
                 offense_bool = True
                 if p2_action:
-                    if [P2_TEAM_ID_INDEX] != event[P1_TEAM_ID_INDEX]:
+                    if event[P2_TEAM_ID_INDEX] != event[P1_TEAM_ID_INDEX]:
                         offense_bool = False
                     # Need to update p2 stats so we get/add the node
                     p2_node = self.playerNodeGetOrAdd(player_id=event[P2_ID_INDEX], player_name=P2_res.get("full_name"), player_team_id=event[P2_TEAM_ID_INDEX])
                     p2_node.updateStatsNode(p2_action, event_num=event[EVENTNUM_INDEX])
+                    
                     # Updating edge between two players, need to confirm play_direction
+                    # print(f"P1: {p1_node.full_name} {p1_action} ; P2: {p2_node.full_name} {p2_action} ; OFFENSE {offense_bool}")
                     if not play_direction:
                         game_edge = p2_node.gameEdgeGetOrAdd(p1_node.id, off_bool=offense_bool)
                         if p2_action == "AST":
@@ -239,32 +242,47 @@ class gameGraphBase:
                         game_edge.updateStatsEdge(action_stat = p1_action)
                 
                 elif p3_action:
+                    if event[P3_TEAM_ID_INDEX] != event[P1_TEAM_ID_INDEX]:
+                        offense_bool = False
                     p3_node = self.playerNodeGetOrAdd(player_id=event[P3_ID_INDEX], player_name=P3_res.get("full_name"), player_team_id=event[P3_TEAM_ID_INDEX])
                     p3_node.updateStatsNode(p3_action, event_num=event[EVENTNUM_INDEX])
                 
+                    # print(f"P1: {p1_node.full_name} {p1_action} ; P3: {p3_node.full_name} {p3_action} ; OFFENSE {offense_bool}")
+
                     # Update/create edge between two players
                     game_edge = p3_node.gameEdgeGetOrAdd(p1_node.id, off_bool=offense_bool)
                     game_edge.updateStatsEdge(action_stat = p3_action)
 
                 
         print("COMPLETED GRAPH")
-        return self.graph_nodes
+        # return self.graph_nodes
                 
         
     def playerNodeGetOrAdd(self, player_id, player_name, player_team_id):
         return self.graph_nodes.setdefault(player_id, playerNode(id=player_id, full_name=player_name, team_id=player_team_id))
+    
+    def getCytoScapeElementList(self):
+        elements = []
+        for id, player in self.graph_nodes.items():
+            elements.append({
+                "data" : {"id" : str(id), "label" : player.full_name},
+            })
+            for edge_id in player.connections:
+                elements.append({"data" : {"source" : str(id), "target" : str(edge_id)}})
+                
+        return elements
+                
         
-
 
 
 def buildGameGraph(game_id : str, home_team_id : str, away_team_id : str):
     
     # initialize the graph object using params
-    game_graph = gameGraphBase(game_id=game_id, home_team_id=home_team_id, away_team_id=away_team_id)
+    game_graph = gameGraphBase(game_id="0022400500", home_team_id=home_team_id, away_team_id=away_team_id)
     
     # generate df for event iteration below
     play_by_play_df = utils.create_clean_PBP_df(game_id)
-    graph = game_graph.buildGraph(play_by_play_df=play_by_play_df)
-    return graph
+    game_graph.buildGraph(play_by_play_df=play_by_play_df)
+    return game_graph
     
         
