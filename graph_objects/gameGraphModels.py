@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 import nba_api.stats.endpoints as nba_stats
 import nba_api.live.nba.endpoints as nba_live
 from nba_api.stats.static import players, teams
-from graph_objects import utils
+from . import utils
 from typing import Dict
 import polars as pl
 import re
@@ -265,10 +265,11 @@ class gameGraphBase:
         elements = []
         for id, player in self.graph_nodes.items():
             elements.append({
-                "data" : {"id" : str(id), "label" : player.full_name},
+                "data" : {"id" : str(id), "label" : player.full_name, "team" : player.team_id},
             })
-            for edge_id in player.connections:
-                elements.append({"data" : {"source" : str(id), "target" : str(edge_id)}})
+            for edge_id, edge in player.connections.items():
+                elements.append(
+                    {"data" : {"source" : str(id), "target" : str(edge_id), "offense" : str(edge.offense)}})
                 
         return elements
                 

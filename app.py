@@ -20,7 +20,55 @@ app.layout = html.Div([
             # 'startAngle': math.pi * -3 / 6,
             # 'sweep': math.pi * 6 / 6
         },
-        zoomingEnabled=False
+        zoomingEnabled=False,
+        stylesheet=[
+            {
+                'selector': 'node',
+                'style': {
+                    'label': 'data(label)',
+                    'text-valign': 'center',
+                    'text-halign': 'center',
+                    'width': 60,
+                    'height': 60
+                }
+            },
+            
+            {
+              "selector" : "node[team=1610612746]"  ,
+                'style': {
+                    'background-color' : '#0000ff'
+                }
+            },
+            
+            {
+              "selector" : "node[team=1610612750]"  ,
+                'style': {
+                    'background-color' : '#ff0000'
+                }
+            },
+            
+                        {
+              "selector" : "edge[offense = 'False']"  ,
+                'style': {
+                    'width': 2,
+                    'line-color': '#666',
+                    'line-style' : 'dashed',
+                    'curve-style': 'bezier',
+                    'arrow-shape': 'triangle'
+                }
+            },
+            
+            {
+              "selector" : "edge[offense = 'True']"  ,
+                'style': {
+                    'width': 2,
+                    'line-color': '#666',
+                    'curve-style': 'bezier',
+                    'arrow-shape': 'triangle'
+                }
+            },
+            
+        ]
     )
 ])
 
