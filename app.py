@@ -131,7 +131,7 @@ def update_side_panel(node):
         {
             "selector": "edge",
             "style": {
-                "opacity": 0.2,
+                "opacity": 0,
                 "curve-style": "bezier",
             },
         },
@@ -155,9 +155,62 @@ def update_side_panel(node):
     
     for edge in node['edgesData']:
         if edge['source'] == node['data']['id']:
-            pass
+            stylesheet.append(
+            {
+                'selector': f'node[id = "{edge["target"]}"]',
+                'style': {
+                    'background-color': "blue",
+                    'label': 'data(label)',
+                    'text-valign': 'center',
+                    'text-halign': 'center',
+                    'width': 100,
+                    'height': 100,
+                    'opacity': 0.7
+                }
+            }
+            )
+            stylesheet.append(
+                {
+                    'selector': f'edge[id = "{edge["id"]}"]',
+                    'style': {
+                        'width': 5,
+                        'opacity' : 1,
+                        'line-color': 'blue',
+                        'curve-style': 'bezier',
+                        'source-arrow-color': 'blue',
+                        'source-arrow-shape': 'triangle',
+                    }
+                }
+            )
+
         elif edge['target'] == node['data']['id']:
-            pass
+            stylesheet.append(
+                {
+                    'selector': f'node[id = "{edge["source"]}"]',
+                    'style': {
+                        'background-color': "red",
+                        'label': 'data(label)',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'width': 100,
+                        'height': 100,
+                        'opacity': 0.7
+                    }
+                }
+            )
+            stylesheet.append(
+                {
+                    'selector': f'edge[id = "{edge["id"]}"]',
+                    'style': {
+                        'width': 5,
+                        'opacity' : 1,
+                        'line-color': 'red',
+                        'curve-style': 'bezier',
+                        'source-arrow-color': 'red',
+                        'source-arrow-shape': 'triangle',
+                    }
+                }
+            )
     
     player_stats = 0
     player = game_graph.graph_nodes.get(int(node['data']['id']), 0)
