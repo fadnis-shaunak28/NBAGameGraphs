@@ -1,6 +1,6 @@
 import math
 
-from dash import Dash, html, dcc, Output, Input, callback
+from dash import Dash, html, dcc, Output, Input, callback, State
 import dash_cytoscape as cyto
 from graph_objects import gameGraphModels
 
@@ -17,7 +17,8 @@ default_cyto_stylesheet = [
                     'text-valign': 'center',
                     'text-halign': 'center',
                     'width': 100,
-                    'height': 100
+                    'height': 100,
+                    'grabbable' : False
                 }
             },
             
@@ -94,19 +95,26 @@ app.layout = html.Div([
                 html.Div(id='node-stats-div')
             ]
         )
-    ], style={'position': 'relative'})
+    ], style={'position': 'relative'}),
+    
+    dcc.Store('selected-node-id', data=None)
 ])
 
 @callback(
     [Output('side-panel', 'style'),
      Output('node-stats-div', 'children'),
-     Output('cytoscape-layout-5', 'stylesheet')
+     Output('cytoscape-layout-5', 'stylesheet'),
+     Output('selected-node-id', 'data')
      ],
-    Input('cytoscape-layout-5', 'tapNode')
+    Input('cytoscape-layout-5', 'tapNode'),
+    State('selected-node-id' , 'data')
 )
-def update_side_panel(node):
+def update_side_panel(node, selected_node):
     if not node:
-        return {'display': 'none'}, "No node selected", default_cyto_stylesheet
+        return {'display': 'none'}, "No node selected", default_cyto_stylesheet, None
+    
+    if selected_node == node['data']['id']:
+        return {'display' : 'none'}, "", default_cyto_stylesheet, None
     
     # Default style for visible panel
     panel_style = {
@@ -154,12 +162,17 @@ def update_side_panel(node):
     ]
     
     for edge in node['edgesData']:
+        if edge['offense'] == "True":
+            connection_color = "blue"
+        else:
+            connection_color = "red"
+            
         if edge['source'] == node['data']['id']:
             stylesheet.append(
             {
                 'selector': f'node[id = "{edge["target"]}"]',
                 'style': {
-                    'background-color': "blue",
+                    'background-color': connection_color,
                     'label': 'data(label)',
                     'text-valign': 'center',
                     'text-halign': 'center',
@@ -175,9 +188,9 @@ def update_side_panel(node):
                     'style': {
                         'width': 5,
                         'opacity' : 1,
-                        'line-color': 'blue',
+                        'line-color': connection_color,
                         'curve-style': 'bezier',
-                        'source-arrow-color': 'blue',
+                        'source-arrow-color': connection_color,
                         'source-arrow-shape': 'triangle',
                     }
                 }
@@ -188,7 +201,7 @@ def update_side_panel(node):
                 {
                     'selector': f'node[id = "{edge["source"]}"]',
                     'style': {
-                        'background-color': "red",
+                        'background-color': connection_color,
                         'label': 'data(label)',
                         'text-valign': 'center',
                         'text-halign': 'center',
@@ -204,9 +217,9 @@ def update_side_panel(node):
                     'style': {
                         'width': 5,
                         'opacity' : 1,
-                        'line-color': 'red',
+                        'line-color': connection_color,
                         'curve-style': 'bezier',
-                        'source-arrow-color': 'red',
+                        'source-arrow-color': connection_color,
                         'source-arrow-shape': 'triangle',
                     }
                 }
@@ -216,7 +229,7 @@ def update_side_panel(node):
     player = game_graph.graph_nodes.get(int(node['data']['id']), 0)
     if isinstance(player, gameGraphModels.playerNode):
         player_stats = player.getPlayerStats()
-    return panel_style, f"Selected Player: {player_stats} ; {player}", stylesheet
+    return panel_style, f"Selected Player: {player_stats} ; {player}", stylesheet, node['data']['id']
 
 if __name__ == '__main__':
     app.run(debug=True)
