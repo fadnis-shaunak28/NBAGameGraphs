@@ -6,6 +6,7 @@ from . import utils
 from typing import Dict
 import polars as pl
 import re
+import time
 
 
 TEAM_VIEW_TYPE = "TEAM"
@@ -282,8 +283,9 @@ def buildGameGraph(game_id : str, home_team_id : str, away_team_id : str):
     game_graph = gameGraphBase(game_id="0022400500", home_team_id=home_team_id, away_team_id=away_team_id)
     
     # generate df for event iteration below
-    play_by_play_df = utils.create_clean_PBP_df(game_id)
+    play_by_play_df = utils.dfPolarsTest(game_id)
     game_graph.buildGraph(play_by_play_df=play_by_play_df)
+
     return game_graph
     
-        
+

@@ -40,7 +40,7 @@ NOTE: This only works for already played games. Need to add extra time checking 
 
 '''
 
-def create_clean_PBP_df(g_id : str):
+def dfPolarsTest(g_id : str):
     # pull initial data for pbp tables, need V3 for action description and V2 for player identification
     pbp_3_raw = nba_stats.PlayByPlayV3(game_id=g_id)
     pbp_2_raw = nba_stats.PlayByPlayV2(game_id=g_id)
@@ -54,7 +54,7 @@ def create_clean_PBP_df(g_id : str):
     pbp3_df_filtered = pl.from_pandas(pbp3_df).select(pbp3_cols).rename({"actionNumber" : "EVENTNUM"})
 
     # merging two dfs for player and action details
-    play_by_play_df = pbp3_df_filtered.join(pbp2_df_filtered, on="EVENTNUM", how="inner")
+    play_by_play_df = pbp3_df_filtered.join(pbp2_df_filtered, on="EVENTNUM", how="inner").lazy()
     
     df_clean = play_by_play_df.group_by("EVENTNUM").agg([
         pl.col("PERIOD").first(),
@@ -83,12 +83,9 @@ def create_clean_PBP_df(g_id : str):
                                                 pl.col("PLAYER3_TEAM_ID").cast(pl.Int32)
                                                 )
 
-    pre = play_by_play_df.estimated_size()
-    post = pbp_downcast.estimated_size()
-
-    print(f"pre downcast size {pre} \npost downcast size {post}")
     
-    return pbp_downcast
+    pbp_df_final = pbp_downcast.collect()
+    return pbp_df_final
 
 
 '''
