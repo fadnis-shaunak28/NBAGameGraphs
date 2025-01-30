@@ -41,51 +41,67 @@ NOTE: This only works for already played games. Need to add extra time checking 
 '''
 
 def dfPolarsTest(g_id : str):
-    # pull initial data for pbp tables, need V3 for action description and V2 for player identification
-    pbp_3_raw = nba_stats.PlayByPlayV3(game_id=g_id)
-    pbp_2_raw = nba_stats.PlayByPlayV2(game_id=g_id)
+    home_team = 1610612758
+    try:
+        # pull initial data for pbp tables, need V3 for action description and V2 for player identification
+        pbp_3_raw = nba_stats.PlayByPlayV3(game_id=g_id)
+        pbp_2_raw = nba_stats.PlayByPlayV2(game_id=g_id)
 
-    # creating filtered pbp2 df
-    pbp2_df = pbp_2_raw.get_data_frames()[0]
-    pbp2_df_filtered = pl.from_pandas(pbp2_df).select(pbp2_cols)
+        # creating filtered pbp2 df
+        pbp2_df = pbp_2_raw.get_data_frames()[0]
+        pbp2_df_filtered = pl.from_pandas(pbp2_df).select(pbp2_cols)
 
-    # creating filtered pbp3 df
-    pbp3_df = pbp_3_raw.get_data_frames()[0]
-    pbp3_df_filtered = pl.from_pandas(pbp3_df).select(pbp3_cols).rename({"actionNumber" : "EVENTNUM"})
+        # creating filtered pbp3 df
+        pbp3_df = pbp_3_raw.get_data_frames()[0]
+        pbp3_df_filtered = pl.from_pandas(pbp3_df).select(pbp3_cols).rename({"actionNumber" : "EVENTNUM"})
 
-    # merging two dfs for player and action details
-    play_by_play_df = pbp3_df_filtered.join(pbp2_df_filtered, on="EVENTNUM", how="inner").lazy()
-    
-    df_clean = play_by_play_df.group_by("EVENTNUM").agg([
-        pl.col("PERIOD").first(),
-        pl.col("PCTIMESTRING").first(),
-        pl.col("description").str.to_uppercase().str.concat(";"), # Concatenate all,
-        pl.col("actionType").str.to_uppercase().str.concat(";"), # Concatenate all,
-        pl.col("subType").str.to_uppercase().str.concat(";"), # Concatenate all,
+        # merging two dfs for player and action details
+        play_by_play_df = pbp3_df_filtered.join(pbp2_df_filtered, on="EVENTNUM", how="inner").lazy()
         
-        pl.col("PLAYER1_ID").first(),  # first P1 ID
-        pl.col("PLAYER1_TEAM_ID").first(),  # first P1 team ID
-        
-        pl.col("PLAYER2_ID").last(), # last P2 ID
-        pl.col("PLAYER2_TEAM_ID").first(),  # first P2 team ID
-        
-        pl.col("PLAYER3_ID").last(), # last P3 ID
-        pl.col("PLAYER3_TEAM_ID").first(),  # first P3 team ID
-        
-        pl.col("scoreHome").max(), # post-action,
-        pl.col("scoreAway").max(), # post-action,
-        pl.col("shotDistance").max() # post-action
-    ]).sort("EVENTNUM")
-    
-    pbp_downcast = df_clean.with_columns(
-                                                pl.col("PLAYER1_TEAM_ID").cast(pl.Int32),
-                                                pl.col("PLAYER2_TEAM_ID").cast(pl.Int32),
-                                                pl.col("PLAYER3_TEAM_ID").cast(pl.Int32)
-                                                )
+        df_clean = play_by_play_df.group_by("EVENTNUM").agg([
+            pl.col("PERIOD").first(),
+            pl.col("PCTIMESTRING").first(),
+            pl.col("description").str.to_uppercase().str.concat(";"), # Concatenate all,
+            pl.col("actionType").str.to_uppercase().str.concat(";"), # Concatenate all,
+            pl.col("subType").str.to_uppercase().str.concat(";"), # Concatenate all,
+            
+            pl.col("PLAYER1_ID").first(),  # first P1 ID
+            pl.col("PLAYER1_TEAM_ID").first(),  # first P1 team ID
+            
+            pl.col("PLAYER2_ID").last(), # last P2 ID
+            pl.col("PLAYER2_TEAM_ID").first(),  # first P2 team ID
+            
+            pl.col("PLAYER3_ID").last(), # last P3 ID
+            pl.col("PLAYER3_TEAM_ID").first(),  # first P3 team ID
 
-    
-    pbp_df_final = pbp_downcast.collect()
-    return pbp_df_final
+            pl.col("scoreHome").max(), # post-action,
+            pl.col("scoreAway").max(), # post-action,
+            pl.col("shotDistance").max() # post-action
+        ]).sort("EVENTNUM")
+        
+        pbp_downcast = df_clean.with_columns(
+            pl.col("PLAYER1_TEAM_ID").cast(pl.Int32),
+            pl.col("PLAYER2_TEAM_ID").cast(pl.Int32),
+            pl.col("PLAYER3_TEAM_ID").cast(pl.Int32),
+            pl.when(pl.col("PLAYER1_TEAM_ID") == home_team)
+            .then(1)
+            .otherwise(0)
+            .cast(pl.Int8)
+            .alias("HOME_AWAY_BOOL"),
+            
+            pl.col("scoreHome").replace("", None).cast(pl.Int16).forward_fill(),
+            pl.col("scoreAway").replace("", None).cast(pl.Int16).forward_fill()           
+        )
+        
+        pbp_df_final = pbp_downcast.collect()
+        
+        
+        
+        return pbp_df_final
+    except Exception as e:
+        print(f"ERROR PROCESSING GAME - {g_id}: {e} ; PROCEEDING TO NEXT")
+        return -1
+
 
 
 '''
