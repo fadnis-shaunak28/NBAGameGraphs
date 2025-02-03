@@ -41,7 +41,8 @@ NOTE: This only works for already played games. Need to add extra time checking 
 '''
 
 def dfPolarsTest(g_id : str):
-    home_team = 1610612758
+    # TODO: need to add function to get home_team from 
+    # home_team = 1610612758
     try:
         # pull initial data for pbp tables, need V3 for action description and V2 for player identification
         pbp_3_raw = nba_stats.PlayByPlayV3(game_id=g_id)
@@ -80,24 +81,73 @@ def dfPolarsTest(g_id : str):
         ]).sort("EVENTNUM")
         
         pbp_downcast = df_clean.with_columns(
+            ((pl.col("PCTIMESTRING").str.split(":").list.get(0).cast(pl.Int16) * 60) + (pl.col("PCTIMESTRING").str.split(":").list.get(1).cast(pl.Int16))),
+            
             pl.col("PLAYER1_TEAM_ID").cast(pl.Int32),
             pl.col("PLAYER2_TEAM_ID").cast(pl.Int32),
             pl.col("PLAYER3_TEAM_ID").cast(pl.Int32),
-            pl.when(pl.col("PLAYER1_TEAM_ID") == home_team)
-            .then(1)
-            .otherwise(0)
-            .cast(pl.Int8)
-            .alias("HOME_AWAY_BOOL"),
+            # pl.col("PLAYER1_TEAM_ID").eq(home_team).cast(pl.Int8).alias("HOME_AWAY_BOOL"),
             
+            ## fill the scores forward, get around empty string with Null replace
             pl.col("scoreHome").replace("", None).cast(pl.Int16).forward_fill(),
-            pl.col("scoreAway").replace("", None).cast(pl.Int16).forward_fill()           
+            pl.col("scoreAway").replace("", None).cast(pl.Int16).forward_fill(),
+            
+            
+            # type checking for action, cast to int from following mapping:
+            # STL = 1
+            # BLK = 2
+            # MAKE = 3
+            # MISS = 4
+            # TURNOVER = 5
+            # FOUL = 6
+            # FT_MISS = 7
+            # FT_MAKE = 8
+            # REB = 9
+            # TECH_FOUL = 10
+
+            pl.when(pl.col("actionType").str.contains("MISS"))
+            .then(
+                pl.when(pl.col("actionType").str.contains(";"))
+                .then(2)
+                .otherwise(4)
+            )
+            .when(pl.col("actionType").str.contains("FREE"))
+            .then(
+                pl.when(pl.col("description").str.contains("MISS"))
+                .then(7)
+                .otherwise(8)
+            )
+            .when(pl.col("actionType").str.contains("TURNOVER"))
+            .then(
+                pl.when(pl.col("actionType").str.contains(";"))
+                .then(1)
+                .otherwise(5)
+            )
+            
+            .when(pl.col("actionType").str.contains("FOUL"))
+            .then(
+                pl.when(pl.col("subType").str.contains("TECH"))
+                .then(10)
+                .when(pl.col("subType").str.contains("OFFENSIVE"))
+                .then(5)
+                .otherwise(6)
+            )
+            
+            .when(pl.col("actionType").str.contains("REBOUND"))
+            .then(9)
+            
+            .when(pl.col("actionType").str.contains("MADE"))
+            .then(3)
+            
+            .otherwise(-1)
+            
+            .alias("PLAY_ACTION").cast(pl.Int8)           
         )
         
-        pbp_df_final = pbp_downcast.collect()
         
-        
-        
+        pbp_df_final = pbp_downcast.filter(pl.col("PLAYER1_TEAM_ID").is_not_null()).collect()    
         return pbp_df_final
+    
     except Exception as e:
         print(f"ERROR PROCESSING GAME - {g_id}: {e} ; PROCEEDING TO NEXT")
         return -1

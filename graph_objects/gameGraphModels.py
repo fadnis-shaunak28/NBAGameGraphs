@@ -2,7 +2,8 @@ from dataclasses import dataclass, field
 import nba_api.stats.endpoints as nba_stats
 import nba_api.live.nba.endpoints as nba_live
 from nba_api.stats.static import players, teams
-from . import utils
+from graph_objects import utils
+# import utils
 from typing import Dict
 import polars as pl
 import re
@@ -27,6 +28,7 @@ P3_TEAM_ID_INDEX = 11
 SCORE_HOME_INDEX = 12
 SCORE_AWAY_INDEX = 13
 SHOT_DISTANCE_INDEX = 14
+PLAY_ACTION_INDEX = 15
 
 
 @dataclass
@@ -49,18 +51,7 @@ class gameEdge:
         return hash(self.to_p_id)
     
     def updateStatsEdge(self, action_stat : str, **kwargs):
-        if action_stat == "AST":
-            self.AST += 1
-            if kwargs.get("three_made", 0):
-                self.AST_PTS += 3
-            else:
-                self.AST_PTS += 2
-        elif action_stat == "STL":
-            self.STL += 1
-        elif action_stat == "BLK":
-            self.BLK += 1
-        elif action_stat == "PF":
-            self.PF += 1
+        pass
             
     def getEdgeStats(self):
         if self.offense:
@@ -96,12 +87,12 @@ class playerNode:
     PF : int = 0
     F_DRAWN : int = 0
     F_TECH : int = 0
-    # APM : float = 0
-    # TIME_ON_SEC : int = 0
-    # ON_FLOOR : int = 0
-    # ON_FLOOR_START : int = 0
+    
+    # WPA Stats
+    wpa_absolute : float = 0
+    wpa_net : float = 0
+    
     connections : Dict[str, gameEdge] = field(default_factory=dict)      # collection of edges out for a player, action is of form: this_player -> other_player
-    LAST_UPDATED_EVENT : int = 0
     
     def __repr__(self):
         return f"Player_ID: {self.id}, Player_Name: {self.full_name}"
@@ -128,36 +119,13 @@ class playerNode:
         
         return stats_dict
     
+    def updateWPA(self, wp_change : float):
+        pass
 
     def gameEdgeGetOrAdd(self, to_pid, off_bool : bool):
         game_edge = self.connections.setdefault(to_pid, gameEdge(to_p_id=to_pid, offense=off_bool))
         return game_edge
     
-    def updateStatsNode(self, action_stat: str, event_num : int, **kwargs):        
-        self.LAST_UPDATED_EVENT = event_num
-        if action_stat == "TO":
-            self.TO += 1
-        elif action_stat == "AST":
-            self.AST += 1
-        elif action_stat == "BLK":
-            self.BLK += 1
-        elif action_stat == "STL":
-            self.STL += 1
-        elif action_stat == "PTS":
-            if kwargs.get("three_made", False):
-                self.PTS += 3
-            else: 
-                self.PTS += 2
-        elif action_stat == "FT_MAKE":
-            self.PTS += 1
-        elif action_stat == "REB":
-            self.REB += 1
-        elif action_stat == "PF":
-            self.PF += 1
-        elif action_stat == "F_DRAWN":
-            self.F_DRAWN += 1
-        elif action_stat == "F_TECH":
-            self.F_TECH += 1
         
                 
             
@@ -188,76 +156,223 @@ class gameGraphBase:
     '''
     
     def buildGraph(self, play_by_play_df):
-        
+        home_win_prob = 0.5
         for event in play_by_play_df.iter_rows():    
-            p1_exists, p2_exists, p3_exists = False, False, False
-                                
-            # CHECKING IF EVENT HAS PLAYERS 1-3
-            # TODO: figure out better way to manage p1, p2, p3 checking
+            if (action := event[PLAY_ACTION_INDEX]) == -1:
+                continue
             
-            if (P1_res := players.find_player_by_id(player_id=event[P1_ID_INDEX])) and ((P1_res.get("is_active")) == True):
-                p1_exists = True
+            p1_offense = False
             
-            if (P2_res := players.find_player_by_id(player_id=event[P2_ID_INDEX])) and ((P2_res.get("is_active")) == True):
-                p2_exists = True
-
-            if (P3_res := players.find_player_by_id(player_id=event[P3_ID_INDEX])) and ((P3_res.get("is_active")) == True):
-                p3_exists = True
+            # Inference columns for win prob: [PERIOD, PCTIMESTRING, scoreHome, scoreAway, PLAY_ACTION, HOME_AWAY_BOOL]
+            win_prob_row = [event[PERIOD_INDEX], event[PCTIMESTRING_INDEX], event[SCORE_HOME_INDEX], event[SCORE_AWAY_INDEX], event[PLAY_ACTION_INDEX]]
+            if event[P1_TEAM_ID_INDEX] == self.home_team_id:
+                win_prob_row.append(1)
+                p1_offense = True
+            else:
+                win_prob_row.append(0)
+                
+            play_win_prob = 0 # call wpa model 
+            wpa = play_win_prob - home_win_prob # get the change in win probability
             
-            missed_shot = True if re.search(pattern=r"MISS", string=event[DESCRIPTION_INDEX]) else False
-            p1_action, p2_action, p3_action, play_direction = utils.scrapeActionType(action_type_str=event[ACTION_TYPE_INDEX], p1_bool=p1_exists, p2_bool=p2_exists, p3_bool=p3_exists, miss_bool=missed_shot)    
-
+            # STL
+            if action == 1:
+                # P2 steals from P1
+                from_player = players.find_player_by_id(player_id=event[P2_ID_INDEX])
+                to_player = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                
+                # player who got the steal
+                from_node = self.playerNodeGetOrAdd(
+                    player_id=event[P2_ID_INDEX],
+                    player_name=from_player.get("full_name"),
+                    player_team_id=event[P2_TEAM_ID_INDEX]
+                )
+                
+                # player who got stolen from - i.e. turnover
+                to_node = self.playerNodeGetOrAdd(
+                    player_id=event[P1_ID_INDEX],
+                    player_name=to_player.get("full_name"),
+                    player_team_id=event[P1_TEAM_ID_INDEX]
+                )   
+                
+                # update involved player nodes
+                from_node.STL += 1
+                to_node.TO += 1
+                
+                from_node.updateWPA(wp_change=wpa)
+                to_node.updateWPA(wp_change=wpa)
+                
+                
+                # update game_edge to reflect event
+                game_edge = from_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=False)
+                game_edge.updateStatsEdge(action_stat=action, wp_change=wpa)
+                        
+            # BLK
+            elif action == 2:
+                # P3 blocks P1
+                from_player = players.find_player_by_id(player_id=event[P3_ID_INDEX])
+                to_player = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                
+                # player who blocks
+                from_node = self.playerNodeGetOrAdd(
+                    player_id=event[P3_ID_INDEX],
+                    player_name=from_player.get("full_name"),
+                    player_team_id=event[P3_TEAM_ID_INDEX]
+                )
+                
+                # player who got blocked
+                to_node = self.playerNodeGetOrAdd(
+                    player_id=event[P1_ID_INDEX],
+                    player_name=to_player.get("full_name"),
+                    player_team_id=event[P1_TEAM_ID_INDEX]
+                )  
+                
+                # update involved player nodes
+                from_node.BLK += 1
+                
+                from_node.updateWPA(wp_change=wpa)
+                to_node.updateWPA(wp_change=wpa)
+                
+                # update game_edge to reflect event
+                game_edge = from_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=False)
+                game_edge.updateStatsEdge(action_stat=action, wp_change=wpa)
+                
+            # MAKE
+            elif action == 3:
+                scorer_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                scorer_node = self.playerNodeGetOrAdd(
+                    player_id=event[P1_ID_INDEX],
+                    player_name=scorer_data.get("full_name"),
+                    player_team_id=event[P1_TEAM_ID_INDEX]
+                )
+                
+                points = 2
+                if (made_three_bool := re.search(r"3PT", event[DESCRIPTION_INDEX])):
+                    points = 3
+                
+                scorer_node.PTS += points
+                # if event[P1_ID_INDEX] == 1630162:   
+                #     print(f"PLAYER: {scorer_data.get("full_name")}, DESC: {event[DESCRIPTION_INDEX]}, CURR_PTS: {scorer_node.PTS}")
+                
+                
+                if (P2_DATA := players.find_player_by_id(event[P2_ID_INDEX])) and (P2_DATA.get("is_active") == True):
+                    assister_node = self.playerNodeGetOrAdd(
+                        player_id=event[P2_ID_INDEX],
+                        player_name=P2_DATA.get("full_name"),
+                        player_team_id=event[P2_TEAM_ID_INDEX]
+                    )
                     
-            # if there is a P1 action then we need to update nodes
-            if p1_action:
-                made_three_bool = None
-                p1_node = self.playerNodeGetOrAdd(player_id=event[P1_ID_INDEX], player_name=P1_res.get("full_name"), player_team_id=event[P1_TEAM_ID_INDEX])
-
-                if re.search(r"3PT", event[DESCRIPTION_INDEX]):
-                    made_three_bool = True                
-                    p1_node.updateStatsNode(p1_action, event_num=event[EVENTNUM_INDEX], three_made=made_three_bool)
+                    # update assister's stats
+                    # TODO: UPDATE THE ACTION_STAT TO BE ASSIST HERE
+                    assister_node.AST += 1
+                    
+                    game_edge = assister_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=True)
+                    game_edge.updateStatsEdge(action_stat=action, three_made=made_three_bool, wp_change=wpa)
+            
+            # MISS
+            elif action == 4:
+                player_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                player_node = self.playerNodeGetOrAdd(
+                    player_id=event[P1_ID_INDEX],
+                    player_name=player_data.get("full_name"),
+                    player_team_id=event[P1_TEAM_ID_INDEX]
+                )
+                player_node.updateWPA(wp_change=wpa)
+            
+            # TURNOVER
+            elif action == 5:
+                player_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                player_node = self.playerNodeGetOrAdd(
+                    player_id=event[P1_ID_INDEX],
+                    player_name=player_data.get("full_name"),
+                    player_team_id=event[P1_TEAM_ID_INDEX]
+                )
+                
+                # offensive foul marked as turnover, but need to attribute a foul to the player too
+                if "FOUL" in event[SUB_TYPE_INDEX]:
+                    player_node.TO += 1
+                    player_node.PF += 1
                 else:
-                    p1_node.updateStatsNode(p1_action, event_num=event[EVENTNUM_INDEX])
+                    player_node.TO += 1
                 
+                player_node.updateWPA(wp_change=wpa)
+            
+            # FOUL
+            elif action == 6:
+                # P1 fouls P2
+                from_player = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                if not (to_player := players.find_player_by_id(player_id=event[P2_ID_INDEX])):
+                    continue
+                # player who fouls
+                from_node = self.playerNodeGetOrAdd(
+                    player_id=event[P1_ID_INDEX],
+                    player_name=from_player.get("full_name"),
+                    player_team_id=event[P1_TEAM_ID_INDEX]
+                )
                 
-                #  print(f"EVENT: {event[EVENTNUM_INDEX]}, P1 : ANTHONY EDWARDS ({p1_action}), P2 : {p2_action}, P3 : {p3_action}, TO: {p1_node.TO}, CURRENT_PTS: {p1_node.PTS}\n DESCRIPTION: {event[DESCRIPTION_INDEX]} MADE_THREE_BOOL: {made_three_bool}\n")
+                # player who got fouled
+                to_node = self.playerNodeGetOrAdd(
+                    player_id=event[P2_ID_INDEX],
+                    player_name=to_player.get("full_name"),
+                    player_team_id=event[P2_TEAM_ID_INDEX]
+                )  
+                
+                # update involved player nodes
+                from_node.PF += 1
+                to_node.F_DRAWN += 1
+                
+                from_node.updateWPA(wp_change=wpa)
+                to_node.updateWPA(wp_change=wpa)
+                
+                # update game_edge to reflect event
+                game_edge = from_node.gameEdgeGetOrAdd(to_pid=event[P2_ID_INDEX], off_bool=False)
+                game_edge.updateStatsEdge(action_stat=action, wp_change=wpa)
+            
+            # FT_MAKE
+            elif action == 8:
+                player_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                player_node = self.playerNodeGetOrAdd(
+                    player_id=event[P1_ID_INDEX],
+                    player_name=player_data.get("full_name"),
+                    player_team_id=event[P1_TEAM_ID_INDEX]
+                )
+                player_node.PTS += 1
+                player_node.updateWPA(wp_change=wpa)
+                
+                # if event[P1_ID_INDEX] == 1630162:   
+                #     print(f"PLAYER: {player_data.get("full_name")}, DESC: {event[DESCRIPTION_INDEX]}, CURR_PTS: {player_node.PTS}")
+            
+            # FT_MISS
+            elif action == 7:
+                player_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                player_node = self.playerNodeGetOrAdd(
+                    player_id=event[P1_ID_INDEX],
+                    player_name=player_data.get("full_name"),
+                    player_team_id=event[P1_TEAM_ID_INDEX]
+                )
+                player_node.updateWPA(wp_change=wpa)
 
-                
-                # Checking if p2/p3 are active secondary players
-                offense_bool = True
-                if p2_action:
-                    if event[P2_TEAM_ID_INDEX] != event[P1_TEAM_ID_INDEX]:
-                        offense_bool = False
-                    # Need to update p2 stats so we get/add the node
-                    p2_node = self.playerNodeGetOrAdd(player_id=event[P2_ID_INDEX], player_name=P2_res.get("full_name"), player_team_id=event[P2_TEAM_ID_INDEX])
-                    p2_node.updateStatsNode(p2_action, event_num=event[EVENTNUM_INDEX])
-                    
-                    # Updating edge between two players, need to confirm play_direction
-                    # print(f"P1: {p1_node.full_name} {p1_action} ; P2: {p2_node.full_name} {p2_action} ; OFFENSE {offense_bool}")
-                    if not play_direction:
-                        game_edge = p2_node.gameEdgeGetOrAdd(p1_node.id, off_bool=offense_bool)
-                        if p2_action == "AST":
-                            game_edge.updateStatsEdge(action_stat = p2_action, three_made=made_three_bool)
-                    else:
-                        game_edge = p1_node.gameEdgeGetOrAdd(p2_node.id, off_bool=offense_bool)
-                        game_edge.updateStatsEdge(action_stat = p1_action)
-                
-                elif p3_action:
-                    if event[P3_TEAM_ID_INDEX] != event[P1_TEAM_ID_INDEX]:
-                        offense_bool = False
-                    p3_node = self.playerNodeGetOrAdd(player_id=event[P3_ID_INDEX], player_name=P3_res.get("full_name"), player_team_id=event[P3_TEAM_ID_INDEX])
-                    p3_node.updateStatsNode(p3_action, event_num=event[EVENTNUM_INDEX])
-                
-                    # print(f"P1: {p1_node.full_name} {p1_action} ; P3: {p3_node.full_name} {p3_action} ; OFFENSE {offense_bool}")
+            # REB
+            elif action == 9:
+                player_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                player_node = self.playerNodeGetOrAdd(
+                    player_id=event[P1_ID_INDEX],
+                    player_name=player_data.get("full_name"),
+                    player_team_id=event[P1_TEAM_ID_INDEX]
+                )
+                player_node.REB += 1
+                player_node.updateWPA(wp_change=wpa)
 
-                    # Update/create edge between two players
-                    game_edge = p3_node.gameEdgeGetOrAdd(p1_node.id, off_bool=offense_bool)
-                    game_edge.updateStatsEdge(action_stat = p3_action)
+            # TECH_FOUL
+            elif action == 10:
+                player_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                player_node = self.playerNodeGetOrAdd(
+                    player_id=event[P1_ID_INDEX],
+                    player_name=player_data.get("full_name"),
+                    player_team_id=event[P1_TEAM_ID_INDEX]
+                )                
+                player_node.F_TECH += 1
+                player_node.updateWPA(wp_change=wpa)
 
-                
-        print("COMPLETED GRAPH")
-        # return self.graph_nodes
-                
         
     def playerNodeGetOrAdd(self, player_id, player_name, player_team_id):
         return self.graph_nodes.setdefault(player_id, playerNode(id=player_id, full_name=player_name, team_id=player_team_id))
@@ -277,13 +392,14 @@ class gameGraphBase:
         
 
 
-def buildGameGraph(game_id : str, home_team_id : str, away_team_id : str):
-    
-    # initialize the graph object using params
-    game_graph = gameGraphBase(game_id="0022400500", home_team_id=home_team_id, away_team_id=away_team_id)
+def buildGameGraph(game_id : str = "0022400500", home_team_id : str = "0", away_team_id : str = "1"):
     
     # generate df for event iteration below
     play_by_play_df = utils.dfPolarsTest(game_id)
+    # initialize the graph object using params
+    game_graph = gameGraphBase(game_id="0022400500", home_team_id=0, away_team_id=1)
+    
+
     game_graph.buildGraph(play_by_play_df=play_by_play_df)
 
     return game_graph
