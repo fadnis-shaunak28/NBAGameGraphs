@@ -4,12 +4,13 @@ import nba_api.live.nba.endpoints as nba_live
 from nba_api.stats.static import players, teams
 # from graph_objects import utils
 import utils
-from typing import Dict
+from typing import Dict, List, Tuple
 import polars as pl
 import re
 import time
 import joblib
 import numpy as np
+import bisect
 
 
 TEAM_VIEW_TYPE = "TEAM"
@@ -122,9 +123,6 @@ class playerNode:
         }
         
         return stats_dict
-    
-    def updateWPA(self, wp_change : float):
-        pass
 
     def gameEdgeGetOrAdd(self, to_pid, off_bool : bool):
         game_edge = self.connections.setdefault(to_pid, gameEdge(to_p_id=to_pid, offense=off_bool))
@@ -132,7 +130,6 @@ class playerNode:
     
         
                 
-            
 class gameGraphBase:
     def __init__(self, game_id, home_team_id, away_team_id):
         self.game_id = game_id
@@ -144,7 +141,19 @@ class gameGraphBase:
         self.graph_nodes = {}
         
         self.wpa_model = joblib.load("../wpa_model/wpa_model.pkl")
+        self.wpa_rankings: List[Tuple[float, int]] = []
         
+        
+    def get_wpa_rankings(self):
+        return [(self.graph_nodes[pid].full_name, wpa) 
+                    for wpa, pid in reversed(self.wpa_rankings)]
+    
+    def update_wpa_rankings(self, p_id : int, wpa_value):
+        # Remove the old entry for this player if it exists
+        self.wpa_rankings = [(w, p) for w, p in self.wpa_rankings if p != p_id]
+        
+        # Insert the new value in sorted order
+        bisect.insort(self.wpa_rankings, (wpa_value, p_id))
         
     '''
 
@@ -306,10 +315,7 @@ class gameGraphBase:
                         assister_node.wpa_net -= wpa
                     
                     game_edge = assister_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=True)
-                    game_edge.updateStatsEdge(action_stat=action, three_made=made_three_bool, wp_change=wpa)
-                    
-                
-                    
+                    game_edge.updateStatsEdge(action_stat=action, three_made=made_three_bool, wp_change=wpa)  
             
             # MISS
             elif action == 4:
@@ -451,6 +457,20 @@ class gameGraphBase:
                     player_node.wpa_net += wpa
                 else:
                     player_node.wpa_net -= wpa
+
+            # Update rankings for P1
+            p1_node = self.graph_nodes[event[P1_ID_INDEX]]
+            self.update_wpa_rankings(event[P1_ID_INDEX], p1_node.wpa_absolute)
+            
+            # Update rankings for P2 if involved
+            if event[P2_ID_INDEX] and event[P2_ID_INDEX] in self.graph_nodes:
+                p2_node = self.graph_nodes[event[P2_ID_INDEX]]
+                self.update_wpa_rankings(event[P2_ID_INDEX], p2_node.wpa_absolute)
+            
+            # Update rankings for P3 if involved
+            if event[P3_ID_INDEX] and event[P3_ID_INDEX] in self.graph_nodes:
+                p3_node = self.graph_nodes[event[P3_ID_INDEX]]
+                self.update_wpa_rankings(event[P3_ID_INDEX], p3_node.wpa_absolute)
 
         
     def playerNodeGetOrAdd(self, player_id, player_name, player_team_id):
