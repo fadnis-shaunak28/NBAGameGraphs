@@ -6,8 +6,6 @@ from graph_objects import gameGraphModels
 
 dash.register_page(__name__, path='/graph')
 
-game_graph = gameGraphModels.buildGameGraph(game_id="0022400500", home_team_id="1", away_team_id="0")
-elements = game_graph.getCytoScapeElementList()
 
 default_cyto_stylesheet = [
             {
@@ -67,7 +65,7 @@ layout = html.Div([
     html.Div([
         cyto.Cytoscape(
             id='cytoscape-layout-5',
-            elements=elements,
+            elements=[],
             style={'width': '100%', 'height': '100vh'},
             layout={
                 'fit' : True,
@@ -100,15 +98,20 @@ layout = html.Div([
         )
     ], style={'position': 'relative'}),
     
-    dcc.Store('selected-node-id', data=None)
+    # Stores elements of current graph
+    dcc.Store(id="graph-elements-store", storage_type="session", data=None),
+    
+    # Stores which node is selected
+    dcc.Store(id="selected-node-id", data=None)
 ])
 
 @callback(
-    [Output('side-panel', 'style'),
-     Output('node-stats-div', 'children'),
-     Output('cytoscape-layout-5', 'stylesheet'),
-     Output('selected-node-id', 'data')
-     ],
+    [
+        Output('side-panel', 'style'),
+        Output('node-stats-div', 'children'),
+        Output('cytoscape-layout-5', 'stylesheet'),
+        Output('selected-node-id', 'data')
+    ],
     Input('cytoscape-layout-5', 'tapNode'),
     State('selected-node-id' , 'data'),
     prevent_initial_call=True
@@ -235,3 +238,29 @@ def update_side_panel(node, selected_node):
         player_stats = player.getPlayerStats()
     return panel_style, f"Selected Player: {player_stats} ; {player}", stylesheet, node['data']['id']
 
+@callback(
+    Output("graph-elements-store", "data"),
+    Input("selected-game-details", "data")
+)
+def createGraphFromSelection(game_details):
+    if not game_details:
+        return dash.no_update
+    
+    # create game_graph from selected game
+    g_id, h_id, a_id = game_details.get("GAME_ID"), game_details.get("HOME_TEAM_ID"), game_details.get("VISITOR_TEAM_ID")
+    game_graph = gameGraphModels.buildGameGraph(game_id=g_id, home_team_id=h_id, away_team_id=a_id)
+    cytoscape_eles = game_graph.getCytoScapeElementList()
+    
+    # store created elements
+    # TODO: need to add future ability to store full graph object to get stats as well
+    return cytoscape_eles
+
+@callback(
+    Output("cytoscape-layout-5", "elements"),
+    Input("graph-elements-store", "data")
+)
+def getStoredCytoElements(stored_elements):
+    if not stored_elements:
+        return dash.no_update
+    
+    return stored_elements

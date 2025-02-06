@@ -4,6 +4,7 @@ import nba_api.stats.endpoints as nba_stats
 import nba_api.live.nba.endpoints as nba_live
 from nba_api.stats.static import players, teams
 import re
+from datetime import datetime as dt
 
 # relevant pbp2 columns
 pbp2_cols = [
@@ -217,29 +218,15 @@ def scrapeActionType(action_type_str, p1_bool=False, p2_bool=False, p3_bool=Fals
     return p1_action, p2_action, p3_action, player_direction
 
 
-
-
-def get_home_id(group):
-    for row in group.itertuples():
-        print(row.MATCHUP)
-        if "@" not in row.MATCHUP:
-            return row.TEAM_ID
-        
-def get_away_id(group):
-    for row in group.itertuples():
-        if "@" in row.MATCHUP:
-            return row.TEAM_ID
-        
-def process_group(group):
-    # Calculate new columns from the group data
-    home_id = get_home_id(group)
-    away_id = get_away_id(group)
+def getGamesByDate(selected_date):
+    # reformat the date from YYYY-MM-DD to M/D/YYYY
+    date_obj = dt.strptime(selected_date, "%Y-%m-%d")
+    new_date = date_obj.strftime("%#m/%#d/%Y")
     
-    # Return a Series or DataFrame with your new columns
-    return pd.Series({
-        'HOME_ID': home_id,
-        'AWAY_ID': away_id
-    })
-
-# game_details = nba_stats.leaguegamefinder.LeagueGameFinder(season_nullable="2024-25", date_from_nullable="", season_type_nullable="Regular Season", league_id_nullable="00").get_data_frames()[0]
-# combined_df = game_details.groupby("GAME_ID").apply(process_group)
+    # get game informatin from scoreboard api endpoint
+    games_raw = nba_stats.ScoreboardV2(game_date=new_date).get_data_frames()[0]
+    game_cols = ["GAME_ID", "HOME_TEAM_ID", "VISITOR_TEAM_ID"]
+    
+    # records including home/away id and game id -> going to add callback for generating graph from clicking on the results
+    games_simple = games_raw[game_cols].to_dict(orient='records')
+    return games_simple

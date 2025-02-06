@@ -74,7 +74,7 @@ class gameEdge:
         return stats
     
     
-    
+
 @dataclass
 class playerNode:
     # required attributes for init args
@@ -523,12 +523,12 @@ class gameGraphBase:
         
 
 
-def buildGameGraph(game_id : str = "0022400500", home_team_id : str = "0", away_team_id : str = "1"):
+def buildGameGraph(game_id, home_team_id, away_team_id):
     
     # generate df for event iteration below
     play_by_play_df = utils.dfPolarsTest(game_id)
     # initialize the graph object using params
-    game_graph = gameGraphBase(game_id="0022400500", home_team_id=0, away_team_id=1)
+    game_graph = gameGraphBase(game_id=game_id, home_team_id=home_team_id, away_team_id=away_team_id)
     
 
     game_graph.buildGraph(play_by_play_df=play_by_play_df)
