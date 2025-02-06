@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 import nba_api.stats.endpoints as nba_stats
 import nba_api.live.nba.endpoints as nba_live
 from nba_api.stats.static import players, teams
-# from graph_objects import utils
-import utils
+from graph_objects import utils
+# import utils
 from typing import Dict, List, Tuple
 import polars as pl
 import re
@@ -11,6 +11,7 @@ import time
 import joblib
 import numpy as np
 import bisect
+from pathlib import Path
 
 
 TEAM_VIEW_TYPE = "TEAM"
@@ -46,6 +47,7 @@ class gameEdge:
     STL : int = 0
     BLK : int = 0
     PF : int = 0    
+    wpa_absolute : float = 0
     
     def __repr__(self):
         return f"Edge to {self.to_p_id}; Offense: {self.offense}"
@@ -140,20 +142,33 @@ class gameGraphBase:
         
         self.graph_nodes = {}
         
-        self.wpa_model = joblib.load("../wpa_model/wpa_model.pkl")
+        # Get the directory containing the current file
+        current_dir = Path(__file__).parent
+        # Go up one level to project root and then into wpa_model
+        model_path = current_dir.parent / 'wpa_model' / 'wpa_model.pkl'
+        
+        self.wpa_model = joblib.load(str(model_path))
+        
+        # self.wpa_model = joblib.load("../wpa_model/wpa_model.pkl")
         self.wpa_rankings: List[Tuple[float, int]] = []
+        self.wpa_max = float('-inf')
+        self.wpa_min = float('inf')
         
         
     def get_wpa_rankings(self):
         return [(self.graph_nodes[pid].full_name, wpa) 
-                    for wpa, pid in reversed(self.wpa_rankings)]
+                    for pid, wpa in reversed(self.wpa_rankings)]
     
     def update_wpa_rankings(self, p_id : int, wpa_value):
         # Remove the old entry for this player if it exists
-        self.wpa_rankings = [(w, p) for w, p in self.wpa_rankings if p != p_id]
-        
+        self.wpa_rankings = [(p, w) for p, w in self.wpa_rankings if p != p_id]
         # Insert the new value in sorted order
-        bisect.insort(self.wpa_rankings, (wpa_value, p_id))
+        bisect.insort(self.wpa_rankings, (p_id, wpa_value), key=lambda x: x[1])
+        # Check the min and max for scale range
+        self.wpa_max = max(self.wpa_rankings, key=lambda x: x[1])[1]
+        self.wpa_min = min(self.wpa_rankings, key=lambda x: x[1])[1]
+        
+        
         
     '''
 
@@ -478,13 +493,30 @@ class gameGraphBase:
     
     def getCytoScapeElementList(self):
         elements = []
+        base_size = 60
+        
+        
         for id, player in self.graph_nodes.items():
+            wpa_ratio = player.wpa_absolute / self.wpa_max
+            adjusted_node_size = base_size + wpa_ratio * 200
+            
             elements.append({
-                "data" : {"id" : str(id), "label" : player.full_name, "team" : player.team_id},
+                "data" : {
+                    "id" : str(id), 
+                    "label" : player.full_name, 
+                    "team" : player.team_id,
+                    "node_size" : adjusted_node_size
+                },
             })
+            
             for edge_id, edge in player.connections.items():
-                elements.append(
-                    {"data" : {"source" : str(id), "target" : str(edge_id), "offense" : str(edge.offense)}})
+                elements.append({
+                    "data" : {
+                        "source" : str(id), 
+                        "target" : str(edge_id), 
+                        "offense" : str(edge.offense)
+                    }
+                })
                 
         return elements
                 
