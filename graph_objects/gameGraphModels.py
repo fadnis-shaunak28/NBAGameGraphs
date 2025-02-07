@@ -12,6 +12,7 @@ import joblib
 import numpy as np
 import bisect
 from pathlib import Path
+import json
 
 
 TEAM_VIEW_TYPE = "TEAM"
@@ -55,9 +56,22 @@ class gameEdge:
     def __hash__(self):
         return hash(self.to_p_id)
     
-    # TODO: need to add wpa update here
-    def updateStatsEdge(self, action_stat : str, **kwargs):
-        pass
+    def updateStatsEdge(self, action_stat : int, wp_change : float, **kwargs):
+        self.wpa_absolute = wp_change
+        
+        if action_stat == 1:
+            self.STL += 1
+        elif action_stat == 2:
+            self.BLK += 1
+        elif action_stat == 3:
+            self.AST += 1
+            if kwargs.get("three_made"):
+                self.AST_PTS += 3
+            else:
+                self.AST_PTS += 2
+        elif action_stat == 6:
+            self.PF += 1
+
             
     def getEdgeStats(self):
         if self.offense:
@@ -71,7 +85,8 @@ class gameEdge:
                 "BLK" : self.BLK,
                 "PF" : self.PF,
             }
-            
+        stats["WPA"] = self.wpa_absolute
+        
         return stats
     
     
@@ -247,7 +262,7 @@ class gameGraphBase:
                 
                 # update game_edge to reflect event
                 game_edge = from_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=False)
-                game_edge.updateStatsEdge(action_stat=action, wp_change=wpa)
+                game_edge.updateStatsEdge(action_stat=action, wp_change=wpa_abs)
                         
             # BLK
             elif action == 2:
@@ -285,7 +300,7 @@ class gameGraphBase:
                 
                 # update game_edge to reflect event
                 game_edge = from_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=False)
-                game_edge.updateStatsEdge(action_stat=action, wp_change=wpa)
+                game_edge.updateStatsEdge(action_stat=action, wp_change=wpa_abs)
                 
             # MAKE
             elif action == 3:
@@ -319,7 +334,6 @@ class gameGraphBase:
                     )
                     
                     # update assister's stats
-                    # TODO: UPDATE THE ACTION_STAT TO BE ASSIST HERE
                     assister_node.AST += 1
                     assister_node.wpa_absolute += wpa_abs
                     
@@ -329,7 +343,7 @@ class gameGraphBase:
                         assister_node.wpa_net -= wpa
                     
                     game_edge = assister_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=True)
-                    game_edge.updateStatsEdge(action_stat=action, three_made=made_three_bool, wp_change=wpa)  
+                    game_edge.updateStatsEdge(action_stat=action, wp_change=wpa_abs, three_made=made_three_bool)  
             
             # MISS
             elif action == 4:
@@ -404,7 +418,7 @@ class gameGraphBase:
                 
                 # update game_edge to reflect event
                 game_edge = from_node.gameEdgeGetOrAdd(to_pid=event[P2_ID_INDEX], off_bool=False)
-                game_edge.updateStatsEdge(action_stat=action, wp_change=wpa)
+                game_edge.updateStatsEdge(action_stat=action, wp_change=wpa_abs)
             
             # FT_MAKE
             elif action == 8:
@@ -518,20 +532,41 @@ class gameGraphBase:
                 })
                 
         return elements
-                
         
+    # method to create json dump for dcc.Store, will later be used with from_json for full graph state mgmt        
+    def to_json(self):
+        graph_dict = {
+            "game_id" : self.game_id,
+            "home_id" : self.home_team_id,
+            "away_id" : self.away_team_id,
+            "home_score" : self.home_score,
+            "away_score" : self.away_score,
+            
+            # serialize each player
+            "nodes" : {
+                str(p_id) : {
+                    "id" : node.id,
+                    "full_name" : node.full_name,
+                    "team_id" : node.team_id,
+                    "stats" : node.getPlayerStats(),
+                    "game_edges" : {
+                        str(to_pid) : edge.getEdgeStats() for to_pid, edge in node.connections.items()
+                    }
+                } for p_id, node in self.graph_nodes.items()
+            }
+        }        
+        return json.dumps(graph_dict, indent=4)
 
 
+# Main entry point for creating a game_graph
 def buildGameGraph(game_id, home_team_id, away_team_id):
     
     # generate df for event iteration below
     play_by_play_df = utils.dfPolarsTest(game_id)
     # initialize the graph object using params
     game_graph = gameGraphBase(game_id=game_id, home_team_id=home_team_id, away_team_id=away_team_id)
-    
-
+    # build graph
     game_graph.buildGraph(play_by_play_df=play_by_play_df)
-
     return game_graph
     
 
