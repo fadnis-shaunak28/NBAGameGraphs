@@ -3,6 +3,7 @@ import dash
 from dash import Dash, html, dcc, Output, Input, callback, State
 import dash_cytoscape as cyto
 from graph_objects import gameGraphModels
+import sys
 
 dash.register_page(__name__, path='/graph')
 
@@ -18,7 +19,10 @@ default_cyto_stylesheet = [
                     'height': 'data(node_size)',
                     # 'width': 100,
                     # 'height': 100,
-                    'grabbable' : False
+                    'grabbable' : False,
+                    "border-color" : "#050505",
+                    "border-width" : 2,
+                    "background-color" : "white",
                 }
             },
             
@@ -66,7 +70,11 @@ layout = html.Div([
         cyto.Cytoscape(
             id='cytoscape-layout-5',
             elements=[],
-            style={'width': '100%', 'height': '100vh'},
+            style={
+                'width': '100%', 
+                'height': '100vh',
+                'background-color': '#dec3a0',
+            },
             layout={
                 'fit' : True,
                 'name': 'circle',
@@ -86,7 +94,7 @@ layout = html.Div([
                 'position': 'absolute',
                 'right': '0',
                 'top': '0',
-                'backgroundColor': '#f8f9fa',
+                'background-color': 'white',
                 'padding': '20px',
                 'borderLeft': '1px solid #dee2e6',
                 'display': 'none'
@@ -104,7 +112,6 @@ layout = html.Div([
     # Stores which node is selected
     dcc.Store(id="selected-node-id", data=None)
 ])
-
 @callback(
     [
         Output('side-panel', 'style'),
@@ -140,7 +147,13 @@ def update_side_panel(node, selected_node):
         {   
             "selector": "node",
             "style" : {
-                "opacity" : 0.2
+                "opacity" : 0.2,
+                "border-color": "#050505",
+                "border-width" : 2,
+                "background-color" : "white",
+                'width': 'data(node_size)',
+                'height': 'data(node_size)',
+                
             }
         },
         {
@@ -231,12 +244,8 @@ def update_side_panel(node, selected_node):
                     }
                 }
             )
-    
-    player_stats = 0
-    player = game_graph.graph_nodes.get(int(node['data']['id']), 0)
-    if isinstance(player, gameGraphModels.playerNode):
-        player_stats = player.getPlayerStats()
-    return panel_style, f"Selected Player: {player_stats} ; {player}", stylesheet, node['data']['id']
+
+    return panel_style, f"Selected Player: {node["data"]["id"]}", stylesheet, node['data']['id']
 
 @callback(
     Output("graph-elements-store", "data"),

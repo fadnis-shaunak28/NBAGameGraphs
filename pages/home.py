@@ -16,6 +16,7 @@ layout = html.Div([
     html.Div(id="game-date-results"),
 ])
 
+# TODO: Need to add styling to the table and also translate the Ids to 3-letter abbrev. and add logos
 @callback(
     Output("game-date-results", "children"),
     Input("game-search-date-entry", "date")

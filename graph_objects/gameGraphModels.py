@@ -55,6 +55,7 @@ class gameEdge:
     def __hash__(self):
         return hash(self.to_p_id)
     
+    # TODO: need to add wpa update here
     def updateStatsEdge(self, action_stat : str, **kwargs):
         pass
             
@@ -176,12 +177,10 @@ class gameGraphBase:
 
             P1  |   P2  |   P3  |
             0   |   X   |   X   |   <-- No valid P1, means the other players don't matter
-            1   |   1   |   X   |   <-- P2 linked, add edge(P1-P2) TODO: Add helper function for defining edge attribute and directionality
+            1   |   1   |   X   |   <-- P2 linked, add edge(P1-P2) 
             1   |   0   |   0   |   <-- Only P1 needs to be updated
             1   |   0   |   1   |   <-- Blocks only, add edge(P3->P1)   
 
-
-            TODO: Need to do NLP helper function to read the description to make changes
             
     '''
     
