@@ -1,9 +1,11 @@
 import math
 import dash
 from dash import Dash, html, dcc, Output, Input, callback, State
+import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
 from graph_objects import gameGraphModels
 import sys
+import json
 
 dash.register_page(__name__, path='/graph')
 
@@ -89,7 +91,7 @@ layout = html.Div([
         html.Div(
             id='side-panel',
             style={
-                'width': '300px',
+                'width': '400px',
                 'height': '100%',
                 'position': 'absolute',
                 'right': '0',
@@ -109,9 +111,14 @@ layout = html.Div([
     # Stores elements of current graph
     dcc.Store(id="graph-elements-store", storage_type="session", data=None),
     
+    # Stores current graph's data for clicking on node
+    dcc.Store(id="graph-data-store", storage_type="session", data=None),
+    
     # Stores which node is selected
     dcc.Store(id="selected-node-id", data=None)
 ])
+
+
 @callback(
     [
         Output('side-panel', 'style'),
@@ -120,10 +127,16 @@ layout = html.Div([
         Output('selected-node-id', 'data')
     ],
     Input('cytoscape-layout-5', 'tapNode'),
-    State('selected-node-id' , 'data'),
+    [
+        State('selected-node-id' , 'data'),
+        State('graph-data-store', "data")
+    ],
     prevent_initial_call=True
 )
-def update_side_panel(node, selected_node):
+def update_side_panel(node, selected_node, stored_graph_data):
+    offense_edges = {}
+    defense_edges = {}
+    
     if not node:
         return {'display': 'none'}, "No node selected", default_cyto_stylesheet, None
     
@@ -181,15 +194,22 @@ def update_side_panel(node, selected_node):
         },
     ]
     
+    # get graph data to describe data in each row
+    player_data = json.loads(stored_graph_data)['nodes']
+
+    
     for edge in node['edgesData']:
-        if edge['offense'] == "True":
-            connection_color = "blue"
-        else:
-            connection_color = "red"
+        connection_color = "blue" if edge['offense'] == "True" else "red"
+        is_outgoing = edge['source'] == node['data']['id']
+        
+        edge_div = html.Div(
+            children=[html.P(f"{stat} : {value}") for stat, value in edge["edge_stats"].items()]
+        )
             
         if edge['source'] == node['data']['id']:
             stylesheet.append(
             {
+                
                 'selector': f'node[id = "{edge["target"]}"]',
                 'style': {
                     'background-color': connection_color,
@@ -215,6 +235,14 @@ def update_side_panel(node, selected_node):
                     }
                 }
             )
+            if edge['offense'] == 'True':
+                off_edge = offense_edges.setdefault(edge['target'], {'incoming': None, 'outgoing': None})
+                off_edge['incoming'] = edge_div
+            else:
+                def_edge = defense_edges.setdefault(edge['target'], {'incoming': None, 'outgoing': None})
+                def_edge['incoming'] = edge_div
+
+                
 
         elif edge['target'] == node['data']['id']:
             stylesheet.append(
@@ -244,25 +272,90 @@ def update_side_panel(node, selected_node):
                     }
                 }
             )
+            
+            if edge['offense'] == 'True':
+                off_edge = offense_edges.setdefault(edge['source'], {'incoming': None, 'outgoing': None})
+                off_edge['outgoing'] = edge_div
 
-    return panel_style, f"Selected Player: {node["data"]["id"]}", stylesheet, node['data']['id']
+            else:
+                def_edge = defense_edges.setdefault(edge['source'], {'incoming': None, 'outgoing': None})
+                def_edge['outgoing'] = edge_div
+
+            
+            
+            
+    selected_player_data = player_data.get(node['data']['id'])
+    
+
+
+    player_panel_div = html.Div(
+        children=[
+            html.Div(
+                children=[
+                    html.H3(node["data"]["label"]),
+                    html.P(f"Player Data: {selected_player_data.get("stats")}")
+                ]
+            ),
+            
+            html.H3("Offense Edges"),
+            dbc.Accordion(
+                children=[
+                    dbc.AccordionItem(
+                        children=[
+                            html.P("Outgoing Edge:") if connection['outgoing'] else None,
+                            connection['outgoing'],
+                            html.P("Incoming Edge:") if connection['incoming'] else None,
+                            connection['incoming']
+                        ],
+                        title=f"{player_data[player].get('full_name')}"
+                    ) for player, connection in offense_edges.items()
+                ],
+                start_collapsed=True,
+                flush=True
+            ),
+            html.H3("Defense Edges"),
+            dbc.Accordion(
+                children=[
+                    dbc.AccordionItem(
+                        children=[
+                            html.P("Outgoing Edge:") if connection['outgoing'] else None,
+                            connection['outgoing'],
+                            html.P("Incoming Edge:") if connection['incoming'] else None,
+                            connection['incoming']
+                        ],
+                        title=f"{player_data[player].get('full_name')}"
+                    ) for player, connection in defense_edges.items()
+                ],
+                start_collapsed=True,
+                flush=True
+            )
+        ]
+    )
+
+
+    return panel_style, player_panel_div, stylesheet, node['data']['id']
+
 
 @callback(
-    Output("graph-elements-store", "data"),
+    [
+        Output("graph-elements-store", "data"),
+        Output("graph-data-store", "data")
+    ],
     Input("selected-game-details", "data")
 )
 def createGraphFromSelection(game_details):
     if not game_details:
-        return dash.no_update
+        return dash.no_update, dash.no_update
     
     # create game_graph from selected game
     g_id, h_id, a_id = game_details.get("GAME_ID"), game_details.get("HOME_TEAM_ID"), game_details.get("VISITOR_TEAM_ID")
     game_graph = gameGraphModels.buildGameGraph(game_id=g_id, home_team_id=h_id, away_team_id=a_id)
     cytoscape_eles = game_graph.getCytoScapeElementList()
+    graph_data = game_graph.to_json()
     
     # store created elements
     # TODO: need to add future ability to store full graph object to get stats as well
-    return cytoscape_eles
+    return cytoscape_eles, graph_data
 
 @callback(
     Output("cytoscape-layout-5", "elements"),

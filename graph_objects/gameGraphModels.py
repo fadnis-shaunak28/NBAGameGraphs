@@ -527,7 +527,8 @@ class gameGraphBase:
                     "data" : {
                         "source" : str(id), 
                         "target" : str(edge_id), 
-                        "offense" : str(edge.offense)
+                        "offense" : str(edge.offense),
+                        "edge_stats" : edge.getEdgeStats(),
                     }
                 })
                 
