@@ -65,56 +65,6 @@ default_cyto_stylesheet = [
             
 ]
 
-# graph_layout = html.Div([
-#     html.Div([
-#         cyto.Cytoscape(
-#             id='cytoscape-layout-5',
-#             elements=[],
-#             style={
-#                 'width': '100%', 
-#                 'height': '100vh',
-#                 'background-color': '#dec3a0',
-#             },
-#             layout={
-#                 'fit' : True,
-#                 'name': 'circle',
-#                 'radius': 50,
-#                 # 'startAngle': math.pi * -3 / 6,
-#                 # 'sweep': math.pi * 6 / 6
-#             },
-#             # zoomingEnabled=True,
-#             stylesheet=default_cyto_stylesheet,
-#         ),
-
-#         html.Div(
-#             id='side-panel',
-#             style={
-#                 'width': '400px',
-#                 'height': '100%',
-#                 'position': 'absolute',
-#                 'right': '0',
-#                 'top': '0',
-#                 'background-color': 'white',
-#                 'padding': '20px',
-#                 'borderLeft': '1px solid #dee2e6',
-#                 'display': 'none'
-#             },
-#             children=[
-#                 html.H3("Player Details", style={'marginBottom': '20px'}),
-#                 html.Div(id='node-stats-div')
-#             ]
-#         )
-#     ], style={'position': 'relative'}),
-    
-#     # Stores elements of current graph
-#     dcc.Store(id="graph-elements-store", storage_type="session", data=None),
-    
-#     # Stores current graph's data for clicking on node
-#     dcc.Store(id="graph-data-store", storage_type="session", data=None),
-    
-#     # Stores which node is selected
-#     dcc.Store(id="selected-node-id", data=None)
-# ])
 
 @callback(
     [
