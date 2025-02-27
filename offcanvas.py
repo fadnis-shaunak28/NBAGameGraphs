@@ -38,15 +38,18 @@ def displayGamesByDate(selected_date):
                         },
                         children=[
                             dbc.Row(
-                                [
-                                dbc.Col(html.H3(h_abr)),
-                                dbc.Col(html.P("VS")),
-                                dbc.Col(html.H3(a_abr)),
-                                ]
+                                children=[
+                                    dbc.Col(html.H3(h_abr, className="m-0")),
+                                    dbc.Col(html.P("VS", className="m-0")),
+                                    dbc.Col(html.H3(a_abr, className="m-0")),
+                                ],
+                                class_name="d-flex justify-content-center align-items-center"
+
                             )
                         ]
                     )
-                ]
+                ],
+                class_name="mt-4"
             )
             game_cards.append(game_card)
             

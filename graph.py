@@ -7,8 +7,6 @@ from graph_objects import gameGraphModels
 import sys
 import json
 
-dash.register_page(__name__, path='/graph')
-
 
 default_cyto_stylesheet = [
             {
@@ -67,57 +65,56 @@ default_cyto_stylesheet = [
             
 ]
 
-layout = html.Div([
-    html.Div([
-        cyto.Cytoscape(
-            id='cytoscape-layout-5',
-            elements=[],
-            style={
-                'width': '100%', 
-                'height': '100vh',
-                'background-color': '#dec3a0',
-            },
-            layout={
-                'fit' : True,
-                'name': 'circle',
-                'radius': 50,
-                # 'startAngle': math.pi * -3 / 6,
-                # 'sweep': math.pi * 6 / 6
-            },
-            # zoomingEnabled=True,
-            stylesheet=default_cyto_stylesheet,
-        ),
+# graph_layout = html.Div([
+#     html.Div([
+#         cyto.Cytoscape(
+#             id='cytoscape-layout-5',
+#             elements=[],
+#             style={
+#                 'width': '100%', 
+#                 'height': '100vh',
+#                 'background-color': '#dec3a0',
+#             },
+#             layout={
+#                 'fit' : True,
+#                 'name': 'circle',
+#                 'radius': 50,
+#                 # 'startAngle': math.pi * -3 / 6,
+#                 # 'sweep': math.pi * 6 / 6
+#             },
+#             # zoomingEnabled=True,
+#             stylesheet=default_cyto_stylesheet,
+#         ),
 
-        html.Div(
-            id='side-panel',
-            style={
-                'width': '400px',
-                'height': '100%',
-                'position': 'absolute',
-                'right': '0',
-                'top': '0',
-                'background-color': 'white',
-                'padding': '20px',
-                'borderLeft': '1px solid #dee2e6',
-                'display': 'none'
-            },
-            children=[
-                html.H3("Player Details", style={'marginBottom': '20px'}),
-                html.Div(id='node-stats-div')
-            ]
-        )
-    ], style={'position': 'relative'}),
+#         html.Div(
+#             id='side-panel',
+#             style={
+#                 'width': '400px',
+#                 'height': '100%',
+#                 'position': 'absolute',
+#                 'right': '0',
+#                 'top': '0',
+#                 'background-color': 'white',
+#                 'padding': '20px',
+#                 'borderLeft': '1px solid #dee2e6',
+#                 'display': 'none'
+#             },
+#             children=[
+#                 html.H3("Player Details", style={'marginBottom': '20px'}),
+#                 html.Div(id='node-stats-div')
+#             ]
+#         )
+#     ], style={'position': 'relative'}),
     
-    # Stores elements of current graph
-    dcc.Store(id="graph-elements-store", storage_type="session", data=None),
+#     # Stores elements of current graph
+#     dcc.Store(id="graph-elements-store", storage_type="session", data=None),
     
-    # Stores current graph's data for clicking on node
-    dcc.Store(id="graph-data-store", storage_type="session", data=None),
+#     # Stores current graph's data for clicking on node
+#     dcc.Store(id="graph-data-store", storage_type="session", data=None),
     
-    # Stores which node is selected
-    dcc.Store(id="selected-node-id", data=None)
-])
-
+#     # Stores which node is selected
+#     dcc.Store(id="selected-node-id", data=None)
+# ])
 
 @callback(
     [
@@ -338,14 +335,16 @@ def update_side_panel(node, selected_node, stored_graph_data):
 
 @callback(
     [
+        Output("cytoscape-layout-5", "elements"),
         Output("graph-elements-store", "data"),
         Output("graph-data-store", "data")
     ],
-    Input("selected-game-details", "data")
+    Input("selected-game-store", "data"),
+    prevent_initial_call=True
 )
 def createGraphFromSelection(game_details):
     if not game_details:
-        return dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update
     
     # create game_graph from selected game
     g_id, h_id, a_id = game_details.get("GAME_ID"), game_details.get("HOME_TEAM_ID"), game_details.get("VISITOR_TEAM_ID")
@@ -355,14 +354,4 @@ def createGraphFromSelection(game_details):
     
     # store created elements
     # TODO: need to add future ability to store full graph object to get stats as well
-    return cytoscape_eles, graph_data
-
-@callback(
-    Output("cytoscape-layout-5", "elements"),
-    Input("graph-elements-store", "data")
-)
-def getStoredCytoElements(stored_elements):
-    if not stored_elements:
-        return dash.no_update
-    
-    return stored_elements
+    return cytoscape_eles, cytoscape_eles, graph_data
