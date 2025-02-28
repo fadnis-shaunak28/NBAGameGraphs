@@ -13,6 +13,9 @@ cytoscape_stylesheet = [
             "border-color" : "#050505",
             "border-width" : 2,
             "background-color" : "white",
+            "shape": 'polygon',
+            'shape-polygon-points': '-0.3 -1, -0.3 -0.85, 0 -0.7, 0.3 -0.85, 0.3 -1, 0.5 -1, 0.8 -0.4, 0.8 1, -0.8 1, -0.8 -0.4, -0.5 -1'
+
         }
     },
     

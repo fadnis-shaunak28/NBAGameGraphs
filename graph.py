@@ -4,66 +4,9 @@ from dash import Dash, html, dcc, Output, Input, callback, State
 import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
 from graph_objects import gameGraphModels
+from cytoscape_styles import cytoscape_stylesheet
 import sys
 import json
-
-
-default_cyto_stylesheet = [
-            {
-                'selector': 'node',
-                'style': {
-                    'label': 'data(label)',
-                    'text-valign': 'center',
-                    'text-halign': 'center',
-                    'width': 'data(node_size)',
-                    'height': 'data(node_size)',
-                    # 'width': 100,
-                    # 'height': 100,
-                    'grabbable' : False,
-                    "border-color" : "#050505",
-                    "border-width" : 2,
-                    "background-color" : "white",
-                }
-            },
-            
-            {
-              "selector" : "node[team=1610612746]"  ,
-                'style': {
-                    'background-color' : '#0000ff'
-                }
-            },
-            
-            {
-              "selector" : "node[team=1610612750]"  ,
-                'style': {
-                    'background-color' : '#ff0000'
-                }
-            },
-            
-                        {
-              "selector" : "edge[offense = 'False']"  ,
-                'style': {
-                    'width': 5,
-                    'line-color': '#red',
-                    'line-style' : 'dashed',
-                    'curve-style': 'bezier',
-                    'source-arrow-color': 'red',
-                    'source-arrow-shape': 'triangle',
-                }
-            },
-            
-            {
-              "selector" : "edge[offense = 'True']"  ,
-                'style': {
-                    'width': 5,
-                    'line-color': '#006400',
-                    'curve-style': 'bezier',
-                    'source-arrow-color': '#006400',
-                    'source-arrow-shape': 'triangle',
-                }
-            },
-            
-]
 
 
 @callback(
@@ -85,10 +28,10 @@ def update_side_panel(node, selected_node, stored_graph_data):
     defense_edges = {}
     
     if not node:
-        return {'display': 'none'}, "No node selected", default_cyto_stylesheet, None
+        return {'display': 'none'}, "No node selected", cytoscape_stylesheet, None
     
     if selected_node == node['data']['id']:
-        return {'display' : 'none'}, "", default_cyto_stylesheet, None
+        return {'display' : 'none'}, "", cytoscape_stylesheet, None
     
     # Default style for visible panel
     panel_style = {
@@ -113,6 +56,8 @@ def update_side_panel(node, selected_node, stored_graph_data):
                 "background-color" : "white",
                 'width': 'data(node_size)',
                 'height': 'data(node_size)',
+                "shape": 'polygon',
+                'shape-polygon-points': '-0.3 -1, -0.3 -0.85, 0 -0.7, 0.3 -0.85, 0.3 -1, 0.5 -1, 0.8 -0.4, 0.8 1, -0.8 1, -0.8 -0.4, -0.5 -1'
                 
             }
         },

@@ -8,7 +8,6 @@ import dash_cytoscape as cyto
 
 import offcanvas
 import graph
-from graph import default_cyto_stylesheet
 from cytoscape_styles import cytoscape_stylesheet
 
 app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.BOOTSTRAP])
