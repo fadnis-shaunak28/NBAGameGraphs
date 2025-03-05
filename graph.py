@@ -64,7 +64,7 @@ def update_side_panel(node, selected_node, stored_graph_data):
         {
             "selector": "edge",
             "style": {
-                "opacity": 0,
+                "line-opacity": 0,
                 "curve-style": "bezier",
             },
         },
@@ -84,6 +84,25 @@ def update_side_panel(node, selected_node, stored_graph_data):
                 "z-index": 9999,
             },
         },
+        {
+            "selector" : "edge[display_edge = 'True']" ,
+            'style': {
+                'label': 'data(display_name)',
+                'font-family' : 'JERSEY_NUMBER_FONT',
+                'font-size' : '30px',
+                'line-opacity' : "0",
+                'z-index' : 100,
+                'loop-direction' : '-180deg',
+                'loop-sweep' : '0deg',
+                "control-point-step-size": 'data(edge_distance)',
+                # "text-halign": "center",
+                # "text-valign": "top",
+                # "text-margin-y": "data(node_size)",  # Dynamically move label down
+                'text-border-color': 'white',  # Border color for the text
+                'text-border-width': '2px',  # Border width around the text
+
+            }
+        }
     ]
     
     # get graph data to describe data in each row
@@ -91,6 +110,9 @@ def update_side_panel(node, selected_node, stored_graph_data):
 
     
     for edge in node['edgesData']:
+        if edge.get('display_edge'):
+            continue
+        
         connection_color = "blue" if edge['offense'] == "True" else "red"
         is_outgoing = edge['source'] == node['data']['id']
         
@@ -119,7 +141,7 @@ def update_side_panel(node, selected_node, stored_graph_data):
                     'selector': f'edge[id = "{edge["id"]}"]',
                     'style': {
                         'width': 5,
-                        'opacity' : 1,
+                        'line-opacity' : 1,
                         'line-color': connection_color,
                         'curve-style': 'bezier',
                         'source-arrow-color': connection_color,
@@ -156,7 +178,7 @@ def update_side_panel(node, selected_node, stored_graph_data):
                     'selector': f'edge[id = "{edge["id"]}"]',
                     'style': {
                         'width': 5,
-                        'opacity' : 1,
+                        'line-opacity' : 1,
                         'line-color': connection_color,
                         'curve-style': 'bezier',
                         'source-arrow-color': connection_color,
@@ -250,3 +272,19 @@ def createGraphFromSelection(game_details):
     # store created elements
     # TODO: need to add future ability to store full graph object to get stats as well
     return cytoscape_eles, cytoscape_eles, graph_data
+
+
+@callback(
+    [
+        Output("cytoscape-layout-5", "zoom"),
+        Output("cytoscape-layout-5", "elements", {"allow_duplicate": True}),
+    ],
+    Input("reset-cyto-btn", "n_clicks"),
+    [
+        State("graph-elements-store", "data")  # Use your stored elements
+    ],
+    prevent_initial_call=True
+)
+def resetCytoLayout(n_clicks, stored_elements):
+    print(f"Reset button clicked {n_clicks} times")
+    return 1, stored_elements

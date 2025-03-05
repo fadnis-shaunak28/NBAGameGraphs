@@ -96,6 +96,7 @@ class playerNode:
     # required attributes for init args
     id : int
     full_name : str
+    display_name : str
     team_id : int
     
     # default stats set to 0/empty
@@ -235,14 +236,16 @@ class gameGraphBase:
                 from_node = self.playerNodeGetOrAdd(
                     player_id=event[P2_ID_INDEX],
                     player_name=from_player.get("full_name"),
-                    player_team_id=event[P2_TEAM_ID_INDEX]
+                    player_team_id=event[P2_TEAM_ID_INDEX],
+                    player_display_name=from_player.get("last_name")
                 )
                 
                 # player who got stolen from - i.e. turnover
                 to_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=to_player.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX]
+                    player_team_id=event[P1_TEAM_ID_INDEX],
+                    player_display_name=to_player.get("last_name")
                 )   
                 
                 # update involved player nodes
@@ -274,14 +277,16 @@ class gameGraphBase:
                 from_node = self.playerNodeGetOrAdd(
                     player_id=event[P3_ID_INDEX],
                     player_name=from_player.get("full_name"),
-                    player_team_id=event[P3_TEAM_ID_INDEX]
+                    player_team_id=event[P3_TEAM_ID_INDEX],
+                    player_display_name=from_player.get("last_name")
                 )
                 
                 # player who got blocked
                 to_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=to_player.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX]
+                    player_team_id=event[P1_TEAM_ID_INDEX],
+                    player_display_name=to_player.get("last_name")
                 )  
                 
                 # update involved player nodes
@@ -308,7 +313,8 @@ class gameGraphBase:
                 scorer_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=scorer_data.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX]
+                    player_team_id=event[P1_TEAM_ID_INDEX],
+                    player_display_name=scorer_data.get("last_name")
                 )
                 
                 points = 2
@@ -330,7 +336,8 @@ class gameGraphBase:
                     assister_node = self.playerNodeGetOrAdd(
                         player_id=event[P2_ID_INDEX],
                         player_name=P2_DATA.get("full_name"),
-                        player_team_id=event[P2_TEAM_ID_INDEX]
+                        player_team_id=event[P2_TEAM_ID_INDEX],
+                        player_display_name=P2_DATA.get("last_name")
                     )
                     
                     # update assister's stats
@@ -351,7 +358,8 @@ class gameGraphBase:
                 player_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=player_data.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX]
+                    player_team_id=event[P1_TEAM_ID_INDEX],
+                    player_display_name=player_data.get("last_name")
                 )
                 player_node.wpa_absolute += wpa_abs
                 if home_event:
@@ -365,7 +373,8 @@ class gameGraphBase:
                 player_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=player_data.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX]
+                    player_team_id=event[P1_TEAM_ID_INDEX],
+                    player_display_name=player_data.get("last_name")
                 )
                 
                 # offensive foul marked as turnover, but need to attribute a foul to the player too
@@ -391,14 +400,16 @@ class gameGraphBase:
                 from_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=from_player.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX]
+                    player_team_id=event[P1_TEAM_ID_INDEX],
+                    player_display_name=from_player.get("last_name")
                 )
                 
                 # player who got fouled
                 to_node = self.playerNodeGetOrAdd(
                     player_id=event[P2_ID_INDEX],
                     player_name=to_player.get("full_name"),
-                    player_team_id=event[P2_TEAM_ID_INDEX]
+                    player_team_id=event[P2_TEAM_ID_INDEX],
+                    player_display_name=to_player.get("last_name")
                 )  
                 
                 # update involved player nodes
@@ -426,7 +437,8 @@ class gameGraphBase:
                 player_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=player_data.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX]
+                    player_team_id=event[P1_TEAM_ID_INDEX],
+                    player_display_name=player_data.get("last_name")
                 )
                 player_node.PTS += 1
                 
@@ -445,7 +457,8 @@ class gameGraphBase:
                 player_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=player_data.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX]
+                    player_team_id=event[P1_TEAM_ID_INDEX],
+                    player_display_name=player_data.get("last_name")
                 )
                 
                 player_node.wpa_absolute += wpa_abs
@@ -460,7 +473,8 @@ class gameGraphBase:
                 player_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=player_data.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX]
+                    player_team_id=event[P1_TEAM_ID_INDEX],
+                    player_display_name=player_data.get("last_name")
                 )
                 player_node.REB += 1
                 
@@ -476,7 +490,8 @@ class gameGraphBase:
                 player_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=player_data.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX]
+                    player_team_id=event[P1_TEAM_ID_INDEX],
+                    player_display_name=player_data.get("last_name")
                 )                
                 player_node.F_TECH += 1
                 
@@ -501,25 +516,44 @@ class gameGraphBase:
                 self.update_wpa_rankings(event[P3_ID_INDEX], p3_node.wpa_absolute)
 
         
-    def playerNodeGetOrAdd(self, player_id, player_name, player_team_id):
-        return self.graph_nodes.setdefault(player_id, playerNode(id=player_id, full_name=player_name, team_id=player_team_id))
+    def playerNodeGetOrAdd(self, player_id, player_name, player_team_id, player_display_name):
+        return self.graph_nodes.setdefault(player_id, playerNode(id=player_id, full_name=player_name, team_id=player_team_id, display_name=player_display_name))
     
     def getCytoScapeElementList(self):
+        with open("graph_objects\jersey_nums_by_id.txt", 'r') as f:
+            jersey_numbers_dict = json.load(f)
+            
+        
+        
         elements = []
         base_size = 60
         
         
         for id, player in self.graph_nodes.items():
             wpa_ratio = player.wpa_absolute / self.wpa_max
-            adjusted_node_size = base_size + wpa_ratio * 200
+            adjusted_node_size = base_size + (wpa_ratio * 200)
             
+            # add details for node itself
             elements.append({
                 "data" : {
                     "id" : str(id), 
-                    "label" : player.full_name, 
+                    "label" : player.full_name,
+                    "jersey_number" :  jersey_numbers_dict.get(str(id)),
+                    "number_size" : (0.7 * adjusted_node_size),
                     "team" : player.team_id,
                     "node_size" : adjusted_node_size
                 },
+            })
+            
+            # add last name for self-loop for second node label
+            elements.append({
+                "data" : {
+                    "source" : str(id),
+                    "target" : str(id),
+                    "display_edge" : str(True),
+                    "display_name" : player.display_name,
+                    "edge_distance" : max(adjusted_node_size / 2, 30)
+                }
             })
             
             for edge_id, edge in player.connections.items():

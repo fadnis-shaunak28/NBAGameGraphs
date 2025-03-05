@@ -38,7 +38,7 @@ app.layout = html.Div([
                     min_date_allowed=date(2023, 1, 1),
                     max_date_allowed=date.today(),
                     placeholder="Find Games by Date",
-                    display_format="MMMM DO, YYYY",
+                    display_format="MMMM DD, YYYY",
                     className="mx-auto d-block",
                     style={
                         'width' : '100%'
@@ -60,24 +60,27 @@ app.layout = html.Div([
     html.Div([
         html.Div([
             dcc.Loading(
-                children=[cyto.Cytoscape(
-                    id='cytoscape-layout-5',
-                    elements=[],
-                    style={
-                        'width': '100%', 
-                        'height': '100vh',
-                        'background-color': '#dec3a0',
-                    },
-                    layout={
-                        'fit' : True,
-                        'name': 'circle',
-                        'radius': 50,
-                        # 'startAngle': math.pi * -3 / 6,
-                        # 'sweep': math.pi * 6 / 6
-                    },
-                    # zoomingEnabled=True,
-                    stylesheet=cytoscape_stylesheet
-                )],
+                children=[
+                    cyto.Cytoscape(
+                        id='cytoscape-layout-5',
+                        elements=[],
+                        style={
+                            'width': '100%', 
+                            'height': '100vh',
+                            'background-color': '#dec3a0',
+                        },
+                        layout={
+                            'fit' : True,
+                            'name': 'circle',
+                            'radius': 50,
+                            # 'startAngle': math.pi * -3 / 6,
+                            # 'sweep': math.pi * 6 / 6
+                        },
+                        zoomingEnabled=True,
+                        stylesheet=cytoscape_stylesheet,
+                        responsive=True
+                    )
+                ],
                 delay_show=300,
 
             ),
@@ -100,7 +103,21 @@ app.layout = html.Div([
                     html.H3("Player Details", style={'marginBottom': '20px'}),
                     html.Div(id='node-stats-div')
                 ]
+            ),
+            
+            dbc.Button(
+                "Refit",
+                id="reset-cyto-btn",
+                n_clicks=0,
+                style={
+                    'position' : "absolute",
+                    'top' : '10px',
+                    'left' : '10px',
+                    'z-index' : '100'
+                }
             )
+            
+            
         ], style={'position': 'relative'}),
         
         # Stores elements of current graph

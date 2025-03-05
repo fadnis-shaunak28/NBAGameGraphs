@@ -10,3 +10,8 @@
 .DateInput_input {
     text-align: center;
 }
+
+@font-face {
+    font-family: 'JERSEY_NUMBER_FONT';
+    src: url('Jersey25-Regular.woff2');
+}
