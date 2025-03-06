@@ -34,7 +34,7 @@ app.layout = html.Div([
         children=[
             dbc.Container(
                 children=[dcc.DatePickerSingle(
-                    date=date.today(),
+                    initial_visible_month=date.today(),
                     id='game-search-date-entry',
                     min_date_allowed=date(2023, 1, 1),
                     max_date_allowed=date.today(),
@@ -68,7 +68,11 @@ app.layout = html.Div([
                         style={
                             'width': '100%', 
                             'height': '100vh',
-                            'background-color': '#dec3a0',
+                            'background-color': '#D2A05F',
+                            'background-image': 'url("/assets/court_lines_transparent.png")',  # Transparent PNG
+                            'background-fit': 'contain',  # Ensures the whole court is visible
+                            'background-repeat': 'no-repeat',
+                            'background-position': 'center center'
                         },
                         layout={
                             'fit' : True,
@@ -106,15 +110,45 @@ app.layout = html.Div([
                 ]
             ),
             
-            dbc.Button(
-                "Refit",
-                id="reset-cyto-btn",
-                n_clicks=0,
+            html.Div(
+                children=[
+                    # First row - Scoreboard
+                    dcc.Loading(
+                        dbc.Row(
+                            children=[
+                                dbc.Col(id="home_abbr"),
+                                dbc.Col(id="home_score"),
+                                dbc.Col(id="away_score"),
+                                dbc.Col(id="away_abbr")
+                            ],
+                            className="mb-2 align-items-center",
+                            style={
+                                "background-color" : "blue",
+                                "font-color" : "white"
+                            }
+                        )
+                    ),
+                    # Second row - Refit button
+                    dbc.Row(
+                        children=[
+                            dbc.Col(
+                                dbc.Button(
+                                    "Refit",
+                                    id="reset-cyto-btn",
+                                    n_clicks=0,
+                                ),
+                                width="auto"
+                            ),
+                        ],
+                    ),
+                ],
                 style={
-                    'position' : "absolute",
-                    'top' : '10px',
-                    'left' : '10px',
-                    'z-index' : '100'
+                    "position": "absolute",
+                    "top": "10px",
+                    "left": "30px",
+                    "z-index": "200",
+                    "padding": "10px",
+                    "min-width": "200px"
                 }
             )
             

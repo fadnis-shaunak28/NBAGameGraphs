@@ -5,6 +5,7 @@ import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
 from graph_objects import gameGraphModels
 from cytoscape_styles import cytoscape_stylesheet, node_selected_stylesheet, team_colors_styles
+import nba_api.stats.static.teams as teams_data
 import sys
 import json
 
@@ -14,7 +15,7 @@ import json
         Output('side-panel', 'style'),
         Output('node-stats-div', 'children'),
         Output('cytoscape-layout-5', 'stylesheet'),
-        Output('selected-node-id', 'data')
+        Output('selected-node-id', 'data'),
     ],
     Input('cytoscape-layout-5', 'tapNode'),
     [
@@ -106,7 +107,7 @@ def update_side_panel(node, selected_node, stored_graph_data):
             "selector": f'node[id = "{node["data"]["id"]}"]',
             "style": {
                 "border-color": "green",
-                "border-width": 2,
+                "border-width": 10,
                 "border-opacity": 1,
                 "opacity": 1,
                 "z-index": 9999,
@@ -135,35 +136,28 @@ def update_side_panel(node, selected_node, stored_graph_data):
         edge_div = html.Div(
             children=[html.P(f"{stat} : {value}") for stat, value in edge["edge_stats"].items()]
         )
-            
+        
+        # outgoing from the selected player
         if edge['source'] == node['data']['id']:
-            # stylesheet.append(
-            # {
-                
-            #     'selector': f'node[id = "{edge["target"]}"]',
-            #     'style': {
-            #         'background-color': connection_color,
-            #         'label': 'data(label)',
-            #         'text-valign': 'center',
-            #         'text-halign': 'center',
-            #         'width': 'data(node_size)',
-            #         'height': 'data(node_size)',
-            #         'opacity': 0.7
-            #     }
-            # }
-            # )
             stylesheet.extend([
                 {
-                  'selector' : f'node[id = "{edge["target"]}"]',
-                  'style' : {
-                      'opacity' : 1
-                  }  
+                    'selector' : f'node[id = "{edge["target"]}"]',
+                    'style' : {
+                        'opacity' : 1
+                    }  
+                },
+                
+                {
+                    "selector" : f'edge[display_edge = "True"][source = "{edge["target"]}"][target = "{edge["target"]}"]' ,
+                    'style': {
+                        "text-opacity" : 1,
+                    } 
                 },
                 
                 {
                     'selector': f'edge[id = "{edge["id"]}"]',
                     'style': {
-                        'width': 5,
+                        'width': 8,
                         'line-opacity' : 1,
                         'line-color': connection_color,
                         'curve-style': 'bezier',
@@ -180,22 +174,9 @@ def update_side_panel(node, selected_node, stored_graph_data):
                 def_edge['incoming'] = edge_div
 
                 
-
+        # incoming to selected node
         elif edge['target'] == node['data']['id']:
-            # stylesheet.append(
-            #     {
-            #         'selector': f'node[id = "{edge["source"]}"]',
-            #         'style': {
-            #             'background-color': connection_color,
-            #             'label': 'data(label)',
-            #             'text-valign': 'center',
-            #             'text-halign': 'center',
-            #             'width': 'data(node_size)',
-            #             'height': 'data(node_size)',
-            #             'opacity': 0.7
-            #         }
-            #     }
-            # )
+
             stylesheet.extend([
                 {
                   'selector' : f'node[id="{edge["source"]}"]',
@@ -205,9 +186,16 @@ def update_side_panel(node, selected_node, stored_graph_data):
                 },
                 
                 {
+                    "selector" : f'edge[display_edge = "True"][source = "{edge["source"]}"][target = "{edge["source"]}"]' ,
+                    'style': {
+                        "text-opacity" : 1,
+                    } 
+                },
+                
+                {
                     'selector': f'edge[id = "{edge["id"]}"]',
                     'style': {
-                        'width': 5,
+                        'width': 8,
                         'line-opacity' : 1,
                         'line-color': connection_color,
                         'curve-style': 'bezier',
@@ -284,30 +272,44 @@ def update_side_panel(node, selected_node, stored_graph_data):
     [
         Output("cytoscape-layout-5", "elements"),
         Output("graph-elements-store", "data"),
-        Output("graph-data-store", "data")
+        Output("graph-data-store", "data"),
+        Output('home_abbr', 'children'),
+        Output('home_score', 'children'),
+        Output('away_score', 'children'),
+        Output('away_abbr', 'children'),
     ],
     Input("selected-game-store", "data"),
     prevent_initial_call=True
 )
 def createGraphFromSelection(game_details):
     if not game_details:
-        return dash.no_update, dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update, None, None, None, None
     
     # create game_graph from selected game
-    g_id, h_id, a_id = game_details.get("GAME_ID"), game_details.get("HOME_TEAM_ID"), game_details.get("VISITOR_TEAM_ID")
+    g_id, h_id, a_id = game_details.get("GAME_ID"), game_details.get("HOME_TEAM_ID"), game_details.get("AWAY_TEAM_ID")
     game_graph = gameGraphModels.buildGameGraph(game_id=g_id, home_team_id=h_id, away_team_id=a_id)
+    home_score, away_score = game_graph.home_score, game_graph.away_score
+    h_abr = teams_data.find_team_name_by_id(h_id).get("abbreviation")
+    a_abr = teams_data.find_team_name_by_id(a_id).get("abbreviation")
+    home_abbr_div = html.H1(h_abr)
+    away_abbr_div = html.H1(a_abr)
+    home_score_div = html.H1(home_score)
+    away_score_div = html.H1(away_score)
+    
+    
     cytoscape_eles = game_graph.getCytoScapeElementList()
     graph_data = game_graph.to_json()
     
-    # store created elements
-    # TODO: need to add future ability to store full graph object to get stats as well
-    return cytoscape_eles, cytoscape_eles, graph_data
+    return cytoscape_eles, cytoscape_eles, graph_data, home_abbr_div, home_score_div, away_score_div, away_abbr_div
 
 
 @callback(
     [
         Output("cytoscape-layout-5", "zoom"),
-        Output("cytoscape-layout-5", "elements", {"allow_duplicate": True}),
+        Output("cytoscape-layout-5", "elements", {"allow_duplicate" : True}),
+        Output("cytoscape-layout-5", "stylesheet", {"allow_duplicates" : True}),
+        Output("side-panel", "style", {"allow_duplicates" : True}),
+        Output("selected-node-id", "data", {"allow_duplicates" : True})
     ],
     Input("reset-cyto-btn", "n_clicks"),
     [
@@ -317,4 +319,16 @@ def createGraphFromSelection(game_details):
 )
 def resetCytoLayout(n_clicks, stored_elements):
     print(f"Reset button clicked {n_clicks} times")
-    return 1, stored_elements
+    side_panel_style = {
+        'width': '400px',
+        'height': '100%',
+        'position': 'absolute',
+        'right': '0',
+        'top': '0',
+        'background-color': 'white',
+        'padding': '20px',
+        'borderLeft': '1px solid #dee2e6',
+        'display': 'none',
+        'overflow-y' : 'scroll'
+    }
+    return 1, stored_elements, cytoscape_stylesheet, side_panel_style, None

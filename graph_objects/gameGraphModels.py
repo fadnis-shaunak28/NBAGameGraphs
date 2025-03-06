@@ -552,7 +552,7 @@ class gameGraphBase:
                     "target" : str(id),
                     "display_edge" : str(True),
                     "display_name" : player.display_name,
-                    "edge_distance" : max(adjusted_node_size / 2, 30)
+                    "edge_distance" : max(adjusted_node_size / 2.1, 50)
                 }
             })
             

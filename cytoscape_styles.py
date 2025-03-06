@@ -1,4 +1,15 @@
 cytoscape_stylesheet = [
+    # {
+    #     'selector': 'core',
+    #     'style': {
+    #         'background-color': '#F4A460',  # Basketball court wood color
+    #         'background-image': 'url("/assets/court_lines_transparent.png")',  # Transparent PNG
+    #         'background-fit': 'contain',  # Ensures the whole court is visible
+    #         'background-repeat': 'no-repeat',
+    #         'background-position': 'center center'
+    #     }
+    # },
+    
     {
         'selector': 'node',
         'style': {
@@ -8,6 +19,9 @@ cytoscape_stylesheet = [
             'text-valign': 'center',
             'text-halign': 'center',
             'text-margin-y' : 'mapData(number_size, 42, 182, 5, 15)',
+            'text-outline-color': 'white',   # Outline color
+            'text-outline-width': 1,         # Outline width
+            'text-outline-opacity': 1,       # Outline opacity
             'width': 'data(node_size)',
             'height': 'data(node_size)',
             # 'width': 100,
@@ -25,7 +39,7 @@ cytoscape_stylesheet = [
     {
         "selector" : "edge[offense = 'False']"  ,
         'style': {
-            'width': 5,
+            'width': 8,
             'line-color': '#red',
             'line-style' : 'dashed',
             'curve-style': 'bezier',
@@ -37,7 +51,7 @@ cytoscape_stylesheet = [
     {
         "selector" : "edge[offense = 'True']"  ,
         'style': {
-            'width': 5,
+            'width': 8,
             'line-color': '#006400',
             'curve-style': 'bezier',
             'source-arrow-color': '#006400',
@@ -50,18 +64,19 @@ cytoscape_stylesheet = [
         'style': {
             'label': 'data(display_name)',
             'font-family' : 'JERSEY_NUMBER_FONT',
-            'font-size' : '30px',
+            'font-size' : '45px',
             'line-opacity' : "0",
             'z-index' : 100,
             'loop-direction' : '-180deg',
             'loop-sweep' : '0deg',
             "control-point-step-size": 'data(edge_distance)',
+            'text-background-color': 'white',
+            'text-background-opacity': 0.6,
+            'text-background-shape': 'round-tag',
+            'text-background-padding': 1,
             # "text-halign": "center",
             # "text-valign": "top",
             # "text-margin-y": "data(node_size)",  # Dynamically move label down
-            'text-border-color': 'white',  # Border color for the text
-            'text-border-width': '2px',  # Border width around the text
-
         }
     },
     
