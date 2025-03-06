@@ -34,6 +34,7 @@ app.layout = html.Div([
         children=[
             dbc.Container(
                 children=[dcc.DatePickerSingle(
+                    date=date.today(),
                     id='game-search-date-entry',
                     min_date_allowed=date(2023, 1, 1),
                     max_date_allowed=date.today(),

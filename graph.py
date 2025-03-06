@@ -4,7 +4,7 @@ from dash import Dash, html, dcc, Output, Input, callback, State
 import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
 from graph_objects import gameGraphModels
-from cytoscape_styles import cytoscape_stylesheet
+from cytoscape_styles import cytoscape_stylesheet, node_selected_stylesheet, team_colors_styles
 import sys
 import json
 
@@ -47,45 +47,32 @@ def update_side_panel(node, selected_node, stored_graph_data):
     }
     
     stylesheet = [
-        {   
-            "selector": "node",
-            "style" : {
-                "opacity" : 0.2,
-                "border-color": "#050505",
-                "border-width" : 2,
-                "background-color" : "white",
-                'width': 'data(node_size)',
-                'height': 'data(node_size)',
-                "shape": 'polygon',
-                'shape-polygon-points': '-0.3 -1, -0.3 -0.85, 0 -0.7, 0.3 -0.85, 0.3 -1, 0.5 -1, 0.8 -0.4, 0.8 1, -0.8 1, -0.8 -0.4, -0.5 -1'
-                
-            }
-        },
         {
-            "selector": "edge",
-            "style": {
-                "line-opacity": 0,
-                "curve-style": "bezier",
-            },
-        },
-        {
-            "selector": f'node[id = "{node["data"]["id"]}"]',
-            "style": {
-                'label': 'data(label)',
+            'selector': 'node',
+            'style': {
+                'label': 'data(jersey_number)',
+                'font-family' : 'JERSEY_NUMBER_FONT',
+                'font-size': "data(number_size)",
                 'text-valign': 'center',
                 'text-halign': 'center',
+                'text-margin-y' : 'mapData(number_size, 42, 182, 5, 15)',
                 'width': 'data(node_size)',
                 'height': 'data(node_size)',
-                "background-color": "#2CFF05",
-                "border-color": "purple",
-                "border-width": 2,
-                "border-opacity": 1,
-                "opacity": 1,
-                "z-index": 9999,
-            },
+                # 'width': 100,
+                # 'height': 100,
+                'grabbable' : False,
+                "border-color" : "#050505",
+                "border-width" : 2,
+                "background-color" : "white",
+                "shape": 'polygon',
+                'opacity' : 0.2,
+                'shape-polygon-points': '-0.3 -1, -0.3 -0.85, 0 -0.7, 0.3 -0.85, 0.3 -1, 0.5 -1, 0.8 -0.4, 0.8 1, -0.8 1, -0.8 -0.4, -0.5 -1'
+
+            }
         },
+        
         {
-            "selector" : "edge[display_edge = 'True']" ,
+            "selector" : 'edge[display_edge = "True"]' ,
             'style': {
                 'label': 'data(display_name)',
                 'font-family' : 'JERSEY_NUMBER_FONT',
@@ -95,6 +82,7 @@ def update_side_panel(node, selected_node, stored_graph_data):
                 'loop-direction' : '-180deg',
                 'loop-sweep' : '0deg',
                 "control-point-step-size": 'data(edge_distance)',
+                "text-opacity" : 0.2,
                 # "text-halign": "center",
                 # "text-valign": "top",
                 # "text-margin-y": "data(node_size)",  # Dynamically move label down
@@ -102,8 +90,36 @@ def update_side_panel(node, selected_node, stored_graph_data):
                 'text-border-width': '2px',  # Border width around the text
 
             }
-        }
+        },
+        
+        {
+            "selector": "edge",
+            "style": {
+                "line-opacity": 0,
+                "curve-style": "bezier",
+            },
+        },
     ]
+    
+    stylesheet.extend([
+        {
+            "selector": f'node[id = "{node["data"]["id"]}"]',
+            "style": {
+                "border-color": "green",
+                "border-width": 2,
+                "border-opacity": 1,
+                "opacity": 1,
+                "z-index": 9999,
+            },
+        },
+        
+        {
+            "selector" : f'edge[display_edge = "True"][source = "{node["data"]["id"]}"][target = "{node["data"]["id"]}"]' ,
+            'style': {
+                "text-opacity" : 1,
+            }
+        }
+    ])
     
     # get graph data to describe data in each row
     player_data = json.loads(stored_graph_data)['nodes']
@@ -121,22 +137,29 @@ def update_side_panel(node, selected_node, stored_graph_data):
         )
             
         if edge['source'] == node['data']['id']:
-            stylesheet.append(
-            {
+            # stylesheet.append(
+            # {
                 
-                'selector': f'node[id = "{edge["target"]}"]',
-                'style': {
-                    'background-color': connection_color,
-                    'label': 'data(label)',
-                    'text-valign': 'center',
-                    'text-halign': 'center',
-                    'width': 'data(node_size)',
-                    'height': 'data(node_size)',
-                    'opacity': 0.7
-                }
-            }
-            )
-            stylesheet.append(
+            #     'selector': f'node[id = "{edge["target"]}"]',
+            #     'style': {
+            #         'background-color': connection_color,
+            #         'label': 'data(label)',
+            #         'text-valign': 'center',
+            #         'text-halign': 'center',
+            #         'width': 'data(node_size)',
+            #         'height': 'data(node_size)',
+            #         'opacity': 0.7
+            #     }
+            # }
+            # )
+            stylesheet.extend([
+                {
+                  'selector' : f'node[id = "{edge["target"]}"]',
+                  'style' : {
+                      'opacity' : 1
+                  }  
+                },
+                
                 {
                     'selector': f'edge[id = "{edge["id"]}"]',
                     'style': {
@@ -148,7 +171,7 @@ def update_side_panel(node, selected_node, stored_graph_data):
                         'source-arrow-shape': 'triangle',
                     }
                 }
-            )
+            ])
             if edge['offense'] == 'True':
                 off_edge = offense_edges.setdefault(edge['target'], {'incoming': None, 'outgoing': None})
                 off_edge['incoming'] = edge_div
@@ -159,21 +182,28 @@ def update_side_panel(node, selected_node, stored_graph_data):
                 
 
         elif edge['target'] == node['data']['id']:
-            stylesheet.append(
+            # stylesheet.append(
+            #     {
+            #         'selector': f'node[id = "{edge["source"]}"]',
+            #         'style': {
+            #             'background-color': connection_color,
+            #             'label': 'data(label)',
+            #             'text-valign': 'center',
+            #             'text-halign': 'center',
+            #             'width': 'data(node_size)',
+            #             'height': 'data(node_size)',
+            #             'opacity': 0.7
+            #         }
+            #     }
+            # )
+            stylesheet.extend([
                 {
-                    'selector': f'node[id = "{edge["source"]}"]',
-                    'style': {
-                        'background-color': connection_color,
-                        'label': 'data(label)',
-                        'text-valign': 'center',
-                        'text-halign': 'center',
-                        'width': 'data(node_size)',
-                        'height': 'data(node_size)',
-                        'opacity': 0.7
-                    }
-                }
-            )
-            stylesheet.append(
+                  'selector' : f'node[id="{edge["source"]}"]',
+                  'style' : {
+                      'opacity' : 1
+                  }  
+                },
+                
                 {
                     'selector': f'edge[id = "{edge["id"]}"]',
                     'style': {
@@ -185,7 +215,7 @@ def update_side_panel(node, selected_node, stored_graph_data):
                         'source-arrow-shape': 'triangle',
                     }
                 }
-            )
+            ])
             
             if edge['offense'] == 'True':
                 off_edge = offense_edges.setdefault(edge['source'], {'incoming': None, 'outgoing': None})
@@ -245,8 +275,8 @@ def update_side_panel(node, selected_node, stored_graph_data):
             )
         ]
     )
-
-
+    stylesheet.extend(team_colors_styles)
+    
     return panel_style, player_panel_div, stylesheet, node['data']['id']
 
 
