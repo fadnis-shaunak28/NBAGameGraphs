@@ -67,7 +67,7 @@ def getSelectedGameDetails(selected_card):
     ctx = dash.ctx
     
     if not ctx.triggered:
-        return "NO GAME SELECTED"
+        return dash.no_update
     
     clicked_game_details = {
             'GAME_ID' : ctx.triggered_id.get("g_id"),

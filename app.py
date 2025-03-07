@@ -52,6 +52,9 @@ app.layout = html.Div([
             ),
 
         ],
+        style={
+          'background-color' : '#212529'  
+        },
         id="game-selector-offcanvas",
         is_open=False,
         title="Select Game"
@@ -72,7 +75,8 @@ app.layout = html.Div([
                             'background-image': 'url("/assets/court_lines_transparent.png")',  # Transparent PNG
                             'background-fit': 'contain',  # Ensures the whole court is visible
                             'background-repeat': 'no-repeat',
-                            'background-position': 'center center'
+                            'background-position': 'center center',
+                            'background-blend-mode' : 'multiply'
                         },
                         layout={
                             'fit' : True,
@@ -84,73 +88,34 @@ app.layout = html.Div([
                         zoomingEnabled=True,
                         stylesheet=cytoscape_stylesheet,
                         responsive=True
-                    )
+                    ),
+                    html.Div(
+                        id='side-panel',
+                        style={
+                            'width': '400px',
+                            'height': '100%',
+                            'position': 'absolute',
+                            'right': '0',
+                            'top': '0',
+                            'background-color': 'white',
+                            'padding': '20px',
+                            'borderLeft': '1px solid #dee2e6',
+                            'display': 'none',
+                            'overflow-y' : 'scroll'
+                        },
+                        children=[
+                            html.H3("Player Details", style={'marginBottom': '20px'}),
+                            html.Div(id='node-stats-div')
+                        ]
+                    ),
+                    
+                    html.Div(
+                        id="scoreboard-refit-div"
+                    ),
                 ],
                 delay_show=300,
 
             ),
-
-            html.Div(
-                id='side-panel',
-                style={
-                    'width': '400px',
-                    'height': '100%',
-                    'position': 'absolute',
-                    'right': '0',
-                    'top': '0',
-                    'background-color': 'white',
-                    'padding': '20px',
-                    'borderLeft': '1px solid #dee2e6',
-                    'display': 'none',
-                    'overflow-y' : 'scroll'
-                },
-                children=[
-                    html.H3("Player Details", style={'marginBottom': '20px'}),
-                    html.Div(id='node-stats-div')
-                ]
-            ),
-            
-            html.Div(
-                children=[
-                    # First row - Scoreboard
-                    dcc.Loading(
-                        dbc.Row(
-                            children=[
-                                dbc.Col(id="home_abbr"),
-                                dbc.Col(id="home_score"),
-                                dbc.Col(id="away_score"),
-                                dbc.Col(id="away_abbr")
-                            ],
-                            className="mb-2 align-items-center",
-                            style={
-                                "background-color" : "blue",
-                                "font-color" : "white"
-                            }
-                        )
-                    ),
-                    # Second row - Refit button
-                    dbc.Row(
-                        children=[
-                            dbc.Col(
-                                dbc.Button(
-                                    "Refit",
-                                    id="reset-cyto-btn",
-                                    n_clicks=0,
-                                ),
-                                width="auto"
-                            ),
-                        ],
-                    ),
-                ],
-                style={
-                    "position": "absolute",
-                    "top": "10px",
-                    "left": "30px",
-                    "z-index": "200",
-                    "padding": "10px",
-                    "min-width": "200px"
-                }
-            )
             
             
         ], style={'position': 'relative'}),

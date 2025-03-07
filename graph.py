@@ -273,17 +273,17 @@ def update_side_panel(node, selected_node, stored_graph_data):
         Output("cytoscape-layout-5", "elements"),
         Output("graph-elements-store", "data"),
         Output("graph-data-store", "data"),
-        Output('home_abbr', 'children'),
-        Output('home_score', 'children'),
-        Output('away_score', 'children'),
-        Output('away_abbr', 'children'),
+        Output("side-panel", "style", {"allow_duplicates" : True}),
+        Output('selected-node-id', 'data', {"allow_duplicates" : True}),
+        Output("cytoscape-layout-5", "stylesheet", {"allow_duplicates" : True}),
+        Output("scoreboard-refit-div", "children")
     ],
     Input("selected-game-store", "data"),
     prevent_initial_call=True
 )
 def createGraphFromSelection(game_details):
     if not game_details:
-        return dash.no_update, dash.no_update, dash.no_update, None, None, None, None
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, None
     
     # create game_graph from selected game
     g_id, h_id, a_id = game_details.get("GAME_ID"), game_details.get("HOME_TEAM_ID"), game_details.get("AWAY_TEAM_ID")
@@ -291,16 +291,91 @@ def createGraphFromSelection(game_details):
     home_score, away_score = game_graph.home_score, game_graph.away_score
     h_abr = teams_data.find_team_name_by_id(h_id).get("abbreviation")
     a_abr = teams_data.find_team_name_by_id(a_id).get("abbreviation")
-    home_abbr_div = html.H1(h_abr)
-    away_abbr_div = html.H1(a_abr)
-    home_score_div = html.H1(home_score)
-    away_score_div = html.H1(away_score)
     
+    scoreboard_bug = [
+                        dbc.Card(
+                            dbc.Row(
+                                children=[
+                                    dbc.Col(
+                                        html.H1(
+                                            h_abr,
+                                            id="home_abbr",
+                                            style={
+                                                "color": "white"
+                                            }
+                                        )
+                                    ),
+                                    dbc.Col(
+                                        html.H1(
+                                            home_score,
+                                            id="home_score",
+                                            style={
+                                                "color": "white"
+                                            }
+                                        )
+                                    ),
+                                    dbc.Col(
+                                        html.H1(
+                                            away_score,
+                                            id="away_score",
+                                            style={
+                                                "color": "white"
+                                            }
+                                        )
+                                    ),
+                                    dbc.Col(
+                                        html.H1(
+                                            a_abr,
+                                            id="away_abbr",
+                                            style={
+                                                "color": "white"
+                                            }
+                                        )
+                                    )
+                                ],
+                                style={
+                                    "font-color" : "white",
+                                    "color" : "white"
+                                }
+                            ),
+                            className="mb-2 p-3 align-items-center",
+                            style={
+                                'background-color' : '#212529'
+                            }
+                        ),
+
+                        dbc.Row(
+                            children=[
+                                dbc.Col(
+                                    dbc.Button(
+                                        "Refit",
+                                        id="reset-cyto-btn",
+                                        n_clicks=0,
+                                        color="dark"
+                                    ),
+                                    width="auto"
+                                ),
+                            ],
+                        )
+                    ]
+    
+    side_panel_style = {
+        'width': '400px',
+        'height': '100%',
+        'position': 'absolute',
+        'right': '0',
+        'top': '0',
+        'background-color': 'white',
+        'padding': '20px',
+        'borderLeft': '1px solid #dee2e6',
+        'display': 'none',  # Hide it initially
+        'overflow-y': 'scroll'
+    }
     
     cytoscape_eles = game_graph.getCytoScapeElementList()
     graph_data = game_graph.to_json()
     
-    return cytoscape_eles, cytoscape_eles, graph_data, home_abbr_div, home_score_div, away_score_div, away_abbr_div
+    return cytoscape_eles, cytoscape_eles, graph_data, side_panel_style, None, cytoscape_stylesheet, scoreboard_bug
 
 
 @callback(
@@ -318,7 +393,6 @@ def createGraphFromSelection(game_details):
     prevent_initial_call=True
 )
 def resetCytoLayout(n_clicks, stored_elements):
-    print(f"Reset button clicked {n_clicks} times")
     side_panel_style = {
         'width': '400px',
         'height': '100%',
@@ -332,3 +406,21 @@ def resetCytoLayout(n_clicks, stored_elements):
         'overflow-y' : 'scroll'
     }
     return 1, stored_elements, cytoscape_stylesheet, side_panel_style, None
+
+
+@callback(
+    Output("scoreboard-refit-div", 'style'),
+    Input("cytoscape-layout-5", "elements")
+)
+def toggleScoreboardVisibility(graph_elements):
+    if graph_elements:
+        return {
+                    "position": "absolute",
+                    "top": "10px",
+                    "left": "30px",
+                    "z-index": "200",
+                    "padding": "10px",
+                    "min-width": "200px"
+                }
+    else:
+        return { 'display' : 'none' }
