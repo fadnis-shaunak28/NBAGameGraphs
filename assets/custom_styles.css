@@ -15,3 +15,8 @@
     font-family: 'JERSEY_NUMBER_FONT';
     src: url('Jersey25-Regular.woff2');
 }
+
+#cytoscape-layout-5 {
+    background-blend-mode: multiply;  /* Apply blend mode */
+}
+

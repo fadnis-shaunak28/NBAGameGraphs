@@ -202,7 +202,9 @@ class gameGraphBase:
     
     def buildGraph(self, play_by_play_df):
         home_win_prob = 0.5
-        for event in play_by_play_df.iter_rows():    
+        for event in play_by_play_df.iter_rows():
+            self.away_score = event[SCORE_AWAY_INDEX]
+            self.home_score = event[SCORE_HOME_INDEX]    
             if (action := event[PLAY_ACTION_INDEX]) == -1:
                 continue
             
@@ -232,40 +234,44 @@ class gameGraphBase:
                 from_player = players.find_player_by_id(player_id=event[P2_ID_INDEX])
                 to_player = players.find_player_by_id(player_id=event[P1_ID_INDEX])
                 
-                # player who got the steal
-                from_node = self.playerNodeGetOrAdd(
-                    player_id=event[P2_ID_INDEX],
-                    player_name=from_player.get("full_name"),
-                    player_team_id=event[P2_TEAM_ID_INDEX],
-                    player_display_name=from_player.get("last_name")
-                )
-                
-                # player who got stolen from - i.e. turnover
-                to_node = self.playerNodeGetOrAdd(
-                    player_id=event[P1_ID_INDEX],
-                    player_name=to_player.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX],
-                    player_display_name=to_player.get("last_name")
-                )   
-                
-                # update involved player nodes
-                from_node.STL += 1
-                to_node.TO += 1
-                
-                from_node.wpa_absolute += wpa_abs
-                to_node.wpa_absolute += wpa_abs
-                
-                if home_event:
-                    from_node.wpa_net -= wpa
-                    to_node.wpa_net += wpa
-                else:
-                    from_node.wpa_net += wpa
-                    to_node.wpa_net -= wpa
+                if from_player:
+                    # player who got the steal
+                    from_node = self.playerNodeGetOrAdd(
+                        player_id=event[P2_ID_INDEX],
+                        player_name=from_player.get("full_name"),
+                        player_team_id=event[P2_TEAM_ID_INDEX],
+                        player_display_name=from_player.get("last_name")
+                    )
+                    from_node.STL += 1
+                    from_node.wpa_absolute += wpa_abs
+                    
+                    if home_event:
+                        from_node.wpa_net -= wpa
+                    else:
+                        from_node.wpa_net += wpa
+
+                    
+                if to_player:
+                    # player who got stolen from - i.e. turnover
+                    to_node = self.playerNodeGetOrAdd(
+                        player_id=event[P1_ID_INDEX],
+                        player_name=to_player.get("full_name"),
+                        player_team_id=event[P1_TEAM_ID_INDEX],
+                        player_display_name=to_player.get("last_name")
+                    )                   
+                    to_node.TO += 1
+                    to_node.wpa_absolute += wpa_abs
+                                
+                    if home_event:
+                        to_node.wpa_net += wpa
+                    else:
+                        to_node.wpa_net -= wpa
                 
                 
                 # update game_edge to reflect event
-                game_edge = from_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=False)
-                game_edge.updateStatsEdge(action_stat=action, wp_change=wpa_abs)
+                if from_player and to_player:
+                    game_edge = from_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=False)
+                    game_edge.updateStatsEdge(action_stat=action, wp_change=wpa_abs)
                         
             # BLK
             elif action == 2:
@@ -273,64 +279,64 @@ class gameGraphBase:
                 from_player = players.find_player_by_id(player_id=event[P3_ID_INDEX])
                 to_player = players.find_player_by_id(player_id=event[P1_ID_INDEX])
                 
-                # player who blocks
-                from_node = self.playerNodeGetOrAdd(
-                    player_id=event[P3_ID_INDEX],
-                    player_name=from_player.get("full_name"),
-                    player_team_id=event[P3_TEAM_ID_INDEX],
-                    player_display_name=from_player.get("last_name")
-                )
+                if from_player:
+                    # player who blocks
+                    from_node = self.playerNodeGetOrAdd(
+                        player_id=event[P3_ID_INDEX],
+                        player_name=from_player.get("full_name"),
+                        player_team_id=event[P3_TEAM_ID_INDEX],
+                        player_display_name=from_player.get("last_name")
+                    )
+                    from_node.BLK += 1
+                    from_node.wpa_absolute += wpa_abs
+                    if home_event:
+                        from_node.wpa_net -= wpa
+                    else:
+                        from_node.wpa_net += wpa
+                    
+                    
+                if to_player:
+                    # player who got blocked
+                    to_node = self.playerNodeGetOrAdd(
+                        player_id=event[P1_ID_INDEX],
+                        player_name=to_player.get("full_name"),
+                        player_team_id=event[P1_TEAM_ID_INDEX],
+                        player_display_name=to_player.get("last_name")
+                    )  
                 
-                # player who got blocked
-                to_node = self.playerNodeGetOrAdd(
-                    player_id=event[P1_ID_INDEX],
-                    player_name=to_player.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX],
-                    player_display_name=to_player.get("last_name")
-                )  
+                    to_node.wpa_absolute += wpa_abs
+                    if home_event:
+                        to_node.wpa_net += wpa
+                    else:
+                        to_node.wpa_net -= wpa
                 
-                # update involved player nodes
-                from_node.BLK += 1
-                
-                # update player wpa
-                from_node.wpa_absolute += wpa_abs
-                to_node.wpa_absolute += wpa_abs
-                
-                if home_event:
-                    from_node.wpa_net -= wpa
-                    to_node.wpa_net += wpa
-                else:
-                    from_node.wpa_net += wpa
-                    to_node.wpa_net -= wpa
-                
-                # update game_edge to reflect event
-                game_edge = from_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=False)
-                game_edge.updateStatsEdge(action_stat=action, wp_change=wpa_abs)
+                if from_player and to_player:
+                    # update game_edge to reflect event
+                    game_edge = from_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=False)
+                    game_edge.updateStatsEdge(action_stat=action, wp_change=wpa_abs)
                 
             # MAKE
             elif action == 3:
-                scorer_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
-                scorer_node = self.playerNodeGetOrAdd(
-                    player_id=event[P1_ID_INDEX],
-                    player_name=scorer_data.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX],
-                    player_display_name=scorer_data.get("last_name")
-                )
-                
                 points = 2
                 if (made_three_bool := re.search(r"3PT", event[DESCRIPTION_INDEX])):
                     points = 3
                 
-                scorer_node.PTS += points
-                # if event[P1_ID_INDEX] == 1630162:   
-                #     print(f"PLAYER: {scorer_data.get("full_name")}, DESC: {event[DESCRIPTION_INDEX]}, CURR_PTS: {scorer_node.PTS}")
+                scorer_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                if scorer_data:
+                    scorer_node = self.playerNodeGetOrAdd(
+                        player_id=event[P1_ID_INDEX],
+                        player_name=scorer_data.get("full_name"),
+                        player_team_id=event[P1_TEAM_ID_INDEX],
+                        player_display_name=scorer_data.get("last_name")
+                    )        
                 
-                scorer_node.wpa_absolute += wpa_abs
-                
-                if home_event:
-                    scorer_node.wpa_net += wpa
-                else:
-                    scorer_node.wpa_net -= wpa
+                    scorer_node.PTS += points
+                    scorer_node.wpa_absolute += wpa_abs
+                    if home_event:
+                        scorer_node.wpa_net += wpa
+                    else:
+                        scorer_node.wpa_net -= wpa
+    
                 
                 if (P2_DATA := players.find_player_by_id(event[P2_ID_INDEX])) and (P2_DATA.get("is_active") == True):
                     assister_node = self.playerNodeGetOrAdd(
@@ -349,27 +355,31 @@ class gameGraphBase:
                     else:
                         assister_node.wpa_net -= wpa
                     
-                    game_edge = assister_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=True)
-                    game_edge.updateStatsEdge(action_stat=action, wp_change=wpa_abs, three_made=made_three_bool)  
+                    if scorer_data:
+                        game_edge = assister_node.gameEdgeGetOrAdd(to_pid=event[P1_ID_INDEX], off_bool=True)
+                        game_edge.updateStatsEdge(action_stat=action, wp_change=wpa_abs, three_made=made_three_bool)  
             
             # MISS
             elif action == 4:
                 player_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
-                player_node = self.playerNodeGetOrAdd(
-                    player_id=event[P1_ID_INDEX],
-                    player_name=player_data.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX],
-                    player_display_name=player_data.get("last_name")
-                )
-                player_node.wpa_absolute += wpa_abs
-                if home_event:
-                    player_node.wpa_net += wpa
-                else:
-                    player_node.wpa_net -= wpa
+                if player_data:
+                    player_node = self.playerNodeGetOrAdd(
+                        player_id=event[P1_ID_INDEX],
+                        player_name=player_data.get("full_name"),
+                        player_team_id=event[P1_TEAM_ID_INDEX],
+                        player_display_name=player_data.get("last_name")
+                    )
+                    player_node.wpa_absolute += wpa_abs
+                    if home_event:
+                        player_node.wpa_net += wpa
+                    else:
+                        player_node.wpa_net -= wpa
             
             # TURNOVER
             elif action == 5:
                 player_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                if not player_data:
+                    continue
                 player_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=player_data.get("full_name"),
@@ -394,46 +404,49 @@ class gameGraphBase:
             elif action == 6:
                 # P1 fouls P2
                 from_player = players.find_player_by_id(player_id=event[P1_ID_INDEX])
-                if not (to_player := players.find_player_by_id(player_id=event[P2_ID_INDEX])):
-                    continue
-                # player who fouls
-                from_node = self.playerNodeGetOrAdd(
-                    player_id=event[P1_ID_INDEX],
-                    player_name=from_player.get("full_name"),
-                    player_team_id=event[P1_TEAM_ID_INDEX],
-                    player_display_name=from_player.get("last_name")
-                )
+                to_player = players.find_player_by_id(player_id=event[P2_ID_INDEX])
+                if from_player:
+                    # player who fouls
+                    from_node = self.playerNodeGetOrAdd(
+                        player_id=event[P1_ID_INDEX],
+                        player_name=from_player.get("full_name"),
+                        player_team_id=event[P1_TEAM_ID_INDEX],
+                        player_display_name=from_player.get("last_name")
+                    )
+                    from_node.PF += 1
+                    from_node.wpa_absolute += wpa_abs
+                    if home_event:
+                        from_node.wpa_net -= wpa
+                    else:
+                        from_node.wpa_net += wpa
+
                 
+                if to_player:
                 # player who got fouled
-                to_node = self.playerNodeGetOrAdd(
-                    player_id=event[P2_ID_INDEX],
-                    player_name=to_player.get("full_name"),
-                    player_team_id=event[P2_TEAM_ID_INDEX],
-                    player_display_name=to_player.get("last_name")
-                )  
+                    to_node = self.playerNodeGetOrAdd(
+                        player_id=event[P2_ID_INDEX],
+                        player_name=to_player.get("full_name"),
+                        player_team_id=event[P2_TEAM_ID_INDEX],
+                        player_display_name=to_player.get("last_name")
+                    )  
+                    to_node.F_DRAWN += 1
+                    # update player wpa
+                    to_node.wpa_absolute += wpa_abs                    
+                    if home_event:
+                        to_node.wpa_net += wpa
+                    else:
+                        to_node.wpa_net -= wpa
                 
-                # update involved player nodes
-                from_node.PF += 1
-                to_node.F_DRAWN += 1
-                
-                # update player wpa
-                from_node.wpa_absolute += wpa_abs
-                to_node.wpa_absolute += wpa_abs
-                
-                if home_event:
-                    from_node.wpa_net -= wpa
-                    to_node.wpa_net += wpa
-                else:
-                    from_node.wpa_net += wpa
-                    to_node.wpa_net -= wpa
-                
-                # update game_edge to reflect event
-                game_edge = from_node.gameEdgeGetOrAdd(to_pid=event[P2_ID_INDEX], off_bool=False)
-                game_edge.updateStatsEdge(action_stat=action, wp_change=wpa_abs)
+                if from_player and to_player:
+                    # update game_edge to reflect event
+                    game_edge = from_node.gameEdgeGetOrAdd(to_pid=event[P2_ID_INDEX], off_bool=False)
+                    game_edge.updateStatsEdge(action_stat=action, wp_change=wpa_abs)
             
             # FT_MAKE
             elif action == 8:
                 player_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                if not player_data:
+                    continue
                 player_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=player_data.get("full_name"),
@@ -454,6 +467,8 @@ class gameGraphBase:
             # FT_MISS
             elif action == 7:
                 player_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                if not player_data:
+                    continue
                 player_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=player_data.get("full_name"),
@@ -470,6 +485,8 @@ class gameGraphBase:
             # REB
             elif action == 9:
                 player_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                if not player_data:
+                    continue
                 player_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=player_data.get("full_name"),
@@ -487,6 +504,8 @@ class gameGraphBase:
             # TECH_FOUL
             elif action == 10:
                 player_data = players.find_player_by_id(player_id=event[P1_ID_INDEX])
+                if not player_data:
+                    continue
                 player_node = self.playerNodeGetOrAdd(
                     player_id=event[P1_ID_INDEX],
                     player_name=player_data.get("full_name"),
@@ -502,8 +521,9 @@ class gameGraphBase:
                     player_node.wpa_net -= wpa
 
             # Update rankings for P1
-            p1_node = self.graph_nodes[event[P1_ID_INDEX]]
-            self.update_wpa_rankings(event[P1_ID_INDEX], p1_node.wpa_absolute)
+            if event[P1_ID_INDEX] and event[P1_ID_INDEX] in self.graph_nodes:
+                p1_node = self.graph_nodes.get(event[P1_ID_INDEX])
+                self.update_wpa_rankings(event[P1_ID_INDEX], p1_node.wpa_absolute)
             
             # Update rankings for P2 if involved
             if event[P2_ID_INDEX] and event[P2_ID_INDEX] in self.graph_nodes:
@@ -541,7 +561,9 @@ class gameGraphBase:
                     "jersey_number" :  jersey_numbers_dict.get(str(id)),
                     "number_size" : (0.7 * adjusted_node_size),
                     "team" : player.team_id,
-                    "node_size" : adjusted_node_size
+                    "node_size" : adjusted_node_size,
+                    "home_away" : 1 if str(player.team_id) == self.home_team_id else 0
+                    
                 },
             })
             

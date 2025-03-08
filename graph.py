@@ -4,7 +4,7 @@ from dash import Dash, html, dcc, Output, Input, callback, State
 import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
 from graph_objects import gameGraphModels
-from cytoscape_styles import cytoscape_stylesheet, node_selected_stylesheet, team_colors_styles
+from cytoscape_styles import cytoscape_stylesheet, node_selected_stylesheet, team_colors_styles, scoreboard_colors
 import nba_api.stats.static.teams as teams_data
 import sys
 import json
@@ -57,6 +57,9 @@ def update_side_panel(node, selected_node, stored_graph_data):
                 'text-valign': 'center',
                 'text-halign': 'center',
                 'text-margin-y' : 'mapData(number_size, 42, 182, 5, 15)',
+                'text-outline-color': 'white',   # Outline color
+                'text-outline-width': 3,         # Outline width
+                'text-outline-opacity': 1,       # Outline opacity
                 'width': 'data(node_size)',
                 'height': 'data(node_size)',
                 # 'width': 100,
@@ -66,9 +69,7 @@ def update_side_panel(node, selected_node, stored_graph_data):
                 "border-width" : 2,
                 "background-color" : "white",
                 "shape": 'polygon',
-                'opacity' : 0.2,
                 'shape-polygon-points': '-0.3 -1, -0.3 -0.85, 0 -0.7, 0.3 -0.85, 0.3 -1, 0.5 -1, 0.8 -0.4, 0.8 1, -0.8 1, -0.8 -0.4, -0.5 -1'
-
             }
         },
         
@@ -301,7 +302,9 @@ def createGraphFromSelection(game_details):
                                             h_abr,
                                             id="home_abbr",
                                             style={
-                                                "color": "white"
+                                                "color": scoreboard_colors.get(h_id),
+                                                'font-family' : 'JERSEY_NUMBER_FONT',
+                                                '-webkit-text-stroke' : '0.25px white'
                                             }
                                         )
                                     ),
@@ -310,7 +313,8 @@ def createGraphFromSelection(game_details):
                                             home_score,
                                             id="home_score",
                                             style={
-                                                "color": "white"
+                                                "color": "white",
+                                                'font-family' : 'JERSEY_NUMBER_FONT'
                                             }
                                         )
                                     ),
@@ -319,7 +323,8 @@ def createGraphFromSelection(game_details):
                                             away_score,
                                             id="away_score",
                                             style={
-                                                "color": "white"
+                                                "color": "white",
+                                                'font-family' : 'JERSEY_NUMBER_FONT'
                                             }
                                         )
                                     ),
@@ -328,15 +333,13 @@ def createGraphFromSelection(game_details):
                                             a_abr,
                                             id="away_abbr",
                                             style={
-                                                "color": "white"
+                                                "color": scoreboard_colors.get(a_id),
+                                                "font-family" : 'JERSEY_NUMBER_FONT',
+                                                '-webkit-text-stroke' : '0.25px white'
                                             }
                                         )
                                     )
                                 ],
-                                style={
-                                    "font-color" : "white",
-                                    "color" : "white"
-                                }
                             ),
                             className="mb-2 p-3 align-items-center",
                             style={
@@ -348,10 +351,10 @@ def createGraphFromSelection(game_details):
                             children=[
                                 dbc.Col(
                                     dbc.Button(
-                                        "Refit",
+                                        "Reset",
                                         id="reset-cyto-btn",
                                         n_clicks=0,
-                                        color="dark"
+                                        color="danger"
                                     ),
                                     width="auto"
                                 ),

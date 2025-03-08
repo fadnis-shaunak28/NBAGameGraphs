@@ -15,6 +15,7 @@ app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[db
 app.layout = html.Div([ 
     dcc.Store(id="selected-game-store", data=None),                   
     
+    # TODO: Need to update site title on navbar, and positioning of game selection button
     dbc.NavbarSimple(
         brand="NBA Game Graphs",
         brand_href="/",
@@ -89,6 +90,7 @@ app.layout = html.Div([
                         stylesheet=cytoscape_stylesheet,
                         responsive=True
                     ),
+                    # TODO: Need to add scrollable feature to only side panel, don't want to scroll past cytoscape
                     html.Div(
                         id='side-panel',
                         style={
@@ -114,11 +116,12 @@ app.layout = html.Div([
                     ),
                 ],
                 delay_show=300,
+                
 
             ),
             
             
-        ], style={'position': 'relative'}),
+        ], style={'position': 'relative', 'background-color' : '#808080'}),
         
         # Stores elements of current graph
         dcc.Store(id="graph-elements-store", storage_type="session", data=None),
