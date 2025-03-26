@@ -132,6 +132,7 @@ celerybeat.pid
 .venv
 env/
 venv/
+game-graph-venv/
 ENV/
 env.bak/
 venv.bak/
@@ -174,6 +175,7 @@ cython_debug/
 test.ipynb
 test_game_id_0022400400.csv
 wpa.ipynb
+number_scraping.ipynb
 
 active_players.txt
 player_numbers.txt

@@ -13,6 +13,7 @@ import numpy as np
 import bisect
 from pathlib import Path
 import json
+import os
 
 
 TEAM_VIEW_TYPE = "TEAM"
@@ -35,9 +36,12 @@ SCORE_AWAY_INDEX = 13
 SHOT_DISTANCE_INDEX = 14
 PLAY_ACTION_INDEX = 15
 
-with open("src\graph_objects\jersey_nums_by_id.txt", 'r') as f:
-    jersey_numbers_dict = json.load(f)
+current_dir = os.path.dirname(__file__)
+file_path = os.path.join(current_dir, "jersey_nums_by_id.txt")
 
+with open(file_path, 'r') as f:
+    jersey_numbers_dict = json.load(f)
+    
 
 @dataclass
 class gameEdge:
